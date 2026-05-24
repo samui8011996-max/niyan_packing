@@ -11,17 +11,15 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --paper: #fbf7ee;
+    --paper: #faf6ec;
     --paper-2: #f3ecd9;
     --ink: #3a352e;
     --ink-soft: #6b6258;
     --line: #d9cfb8;
     --line-dark: #b8a988;
 
-    --pink-1: #f7c8d3;
-    --pink-2: #f29ab2;
-    --pink-3: #d97a96;
-    --pink-soft: #fce4eb;
+    --accent: #8a7355;
+    --accent-soft: #c4b094;
 
     --tape-pink: #f4c8c1;
     --tape-blue: #b9d4d8;
@@ -56,7 +54,7 @@
     pointer-events: none;
     background-image:
       radial-gradient(circle at 20% 30%, rgba(180,150,90,0.04) 0, transparent 40%),
-      radial-gradient(circle at 80% 70%, rgba(240,180,200,0.05) 0, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(180,150,90,0.04) 0, transparent 40%),
       url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 0 0.3 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
     z-index: 0;
   }
@@ -68,75 +66,44 @@
     padding: 0 0 80px;
   }
 
-  /* ============ 粉紅 banner ============ */
+  /* ============ 標頭 ============ */
   .banner {
-    background: linear-gradient(135deg, var(--pink-1) 0%, var(--pink-2) 50%, var(--pink-1) 100%);
-    padding: 28px 24px 22px;
+    background: var(--paper);
+    padding: 24px 24px 18px;
     text-align: center;
     position: relative;
-    overflow: hidden;
-    border-bottom: 3px solid var(--pink-3);
-    box-shadow: 0 4px 12px rgba(217,122,150,0.18);
+    border-bottom: 1.5px dashed var(--line-dark);
   }
-  /* 圓點裝飾 */
   .banner::before {
-    content: '';
+    content: '✦';
     position: absolute;
-    top: 12px; left: 28px;
-    width: 60px; height: 60px;
-    border: 2px dashed rgba(255,255,255,0.5);
-    border-radius: 50%;
-    transform: rotate(15deg);
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--line-dark);
   }
-  .banner::after {
-    content: '';
-    position: absolute;
-    bottom: -20px; right: 30px;
-    width: 80px; height: 80px;
-    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
-    border-radius: 50%;
-  }
-  .banner .stars {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.55;
-  }
-  .banner .star {
-    position: absolute;
-    color: #fff;
-    font-size: 14px;
-  }
-  .banner-inner { position: relative; z-index: 2; }
   .banner .ja {
     font-family: 'Caveat', cursive;
-    color: #fff;
+    color: var(--ink-soft);
     font-size: 22px;
-    letter-spacing: 4px;
-    text-shadow: 0 1px 3px rgba(150,60,90,0.25);
-    margin-bottom: 2px;
+    letter-spacing: 3px;
     transform: rotate(-1deg);
     display: inline-block;
   }
   .banner h1 {
     font-family: 'Shippori Mincho', serif;
     font-weight: 700;
-    font-size: 34px;
-    letter-spacing: 8px;
-    color: #fff;
-    text-shadow: 0 2px 4px rgba(150,60,90,0.3);
-    margin: 2px 0 4px;
-    padding-left: 8px;
+    font-size: 32px;
+    letter-spacing: 6px;
+    color: var(--ink);
+    margin: 4px 0 4px;
+    padding-left: 6px;
   }
   .banner .sub {
-    display: inline-block;
-    color: var(--pink-3);
-    background: rgba(255,255,255,0.85);
-    padding: 2px 14px;
-    border-radius: 12px;
+    color: var(--ink-soft);
     font-size: 12px;
     letter-spacing: 6px;
-    padding-left: 12px;
+    padding-left: 6px;
   }
 
   /* 主體 */
@@ -164,9 +131,9 @@
   }
   .tab:hover { background: var(--paper-2); }
   .tab.active {
-    background: var(--pink-3);
-    color: #fff;
-    border-color: var(--pink-3);
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
   }
   .tab.active::after {
     content: '';
@@ -176,7 +143,7 @@
     width: 0; height: 0;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
-    border-top: 5px solid var(--pink-3);
+    border-top: 5px solid var(--ink);
   }
 
   /* ============ 區塊 ============ */
@@ -206,7 +173,7 @@
     display: inline-block;
     width: 8px; height: 8px;
     border-radius: 50%;
-    background: var(--pink-2);
+    background: var(--accent);
   }
   .tape {
     position: absolute;
@@ -256,7 +223,7 @@
     border-radius: 0;
   }
   input:focus, select:focus, textarea:focus {
-    border-bottom-color: var(--pink-2);
+    border-bottom-color: var(--accent);
     border-bottom-style: solid;
   }
   textarea {
@@ -274,7 +241,7 @@
     right: 2px; top: 50%;
     transform: translateY(-50%);
     background: none; border: none;
-    color: var(--pink-3);
+    color: var(--ink);
     font-size: 16px;
     cursor: pointer;
     padding: 2px 6px;
@@ -299,10 +266,10 @@
     background: var(--paper-2);
     transition: all 0.15s;
   }
-  .color-chip:hover { background: var(--pink-soft); }
+  .color-chip:hover { background: var(--paper-2); }
   .color-chip.on {
     background: #fff;
-    border-color: var(--pink-3);
+    border-color: var(--ink);
     color: var(--ink);
   }
   .color-chip .swatch {
@@ -313,7 +280,7 @@
   }
   .color-add {
     background: none; border: 1.5px dashed var(--line-dark);
-    color: var(--pink-3);
+    color: var(--ink);
     border-radius: 14px;
     padding: 2px 12px;
     cursor: pointer;
@@ -332,22 +299,22 @@
     font-family: 'Shippori Mincho', serif;
     font-weight: 700;
     text-align: center;
-    color: var(--pink-3);
-    border-bottom: 2px solid var(--pink-2);
+    color: var(--ink);
+    border-bottom: 2px solid var(--accent);
   }
   .qty-btns { display: flex; flex-wrap: wrap; gap: 4px; }
   .qty-btn {
     font-family: 'Klee One', serif;
     font-size: 12px;
     padding: 3px 10px;
-    background: var(--pink-soft);
-    color: var(--pink-3);
-    border: 1px solid var(--pink-1);
+    background: var(--paper-2);
+    color: var(--ink);
+    border: 1px solid var(--accent-soft);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.1s;
   }
-  .qty-btn:hover { background: var(--pink-2); color: #fff; }
+  .qty-btn:hover { background: var(--ink); color: var(--paper); }
   .qty-btn.clear {
     background: var(--paper-2);
     color: var(--ink-soft);
@@ -372,11 +339,11 @@
     color: var(--ink-soft);
     user-select: none;
   }
-  .chip:hover { background: var(--pink-soft); }
+  .chip:hover { background: var(--paper-2); }
   .chip.on {
-    background: var(--pink-3);
+    background: var(--ink);
     color: #fff;
-    border-color: var(--pink-3);
+    border-color: var(--ink);
   }
   .pack-detail {
     display: none;
@@ -384,7 +351,7 @@
     padding: 10px 12px;
     background: var(--paper-2);
     border-radius: 4px;
-    border-left: 3px solid var(--pink-2);
+    border-left: 3px solid var(--accent);
   }
   .pack-detail.show { display: block; }
   .pack-detail-row {
@@ -413,15 +380,87 @@
     transition: all 0.15s;
   }
   .btn:hover { background: var(--ink); color: var(--paper); }
-  .btn.primary { background: var(--pink-3); color: #fff; border-color: var(--pink-3); }
-  .btn.primary:hover { background: var(--pink-2); border-color: var(--pink-2); }
+  .btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn.primary:hover { background: var(--stamp-red); border-color: var(--stamp-red); }
   .btn.ghost { border-color: var(--line-dark); color: var(--ink-soft); }
   .btn.small { font-size: 12px; padding: 4px 14px; letter-spacing: 1px; }
   .btn.danger { border-color: var(--stamp-red); color: var(--stamp-red); }
   .btn.danger:hover { background: var(--stamp-red); color: var(--paper); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  /* ============ 平台單卡片 ============ */
+  /* ============ 平台單填寫表格 ============ */
+  .pf-form {
+    display: flex; flex-direction: column;
+    gap: 14px;
+  }
+  .pf-form-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 12px 14px;
+    border-left: 4px solid var(--tape-cream);
+  }
+  .pf-form-card.has-data {
+    border-left-color: var(--tape-blue);
+    background: #fefcf5;
+  }
+  .pf-form-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px dotted var(--line);
+  }
+  .pf-form-head .pf-name {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .pf-form-head .pf-sum {
+    margin-left: auto;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .pf-form-head .pf-sum b {
+    color: var(--stamp-blue);
+    font-size: 18px;
+  }
+  .pf-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px 12px;
+  }
+  .pf-inputs .field { gap: 2px; }
+  .pf-inputs .field label {
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .pf-inputs input {
+    font-size: 14px;
+    padding: 4px;
+  }
+  .pf-form-note {
+    margin-top: 6px;
+    width: 100%;
+  }
+  .pf-form-note input {
+    width: 100%;
+    font-size: 12px;
+    padding: 4px;
+    border: 1px dotted var(--line-dark);
+    border-radius: 3px;
+    background: transparent;
+    font-family: 'Klee One', serif;
+    color: var(--ink-soft);
+  }
+  .pf-form-note input:focus {
+    border-style: solid;
+    border-color: var(--accent);
+    color: var(--ink);
+  }
+
+
   .pf-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -490,7 +529,7 @@
     font-family: 'Shippori Mincho', serif;
     font-size: 22px;
     font-weight: 700;
-    color: var(--pink-3);
+    color: var(--ink);
     margin: 4px 0 8px;
   }
   .pf-total .label {
@@ -622,7 +661,7 @@
     padding: 5px 8px;
     border-radius: 3px;
     margin: 4px 0;
-    border-left: 2px solid var(--pink-1);
+    border-left: 2px solid var(--accent-soft);
   }
   .vc-note {
     font-size: 13px;
@@ -785,7 +824,7 @@
     color: var(--ink-soft);
     cursor: pointer;
   }
-  .seg button.on { background: var(--pink-3); color: #fff; }
+  .seg button.on { background: var(--ink); color: #fff; }
 
   .settings-section {
     text-align: center;
@@ -816,20 +855,11 @@
 
 <div class="app">
 
-  <!-- ===== 粉紅 banner ===== -->
+  <!-- ===== 標頭 ===== -->
   <div class="banner">
-    <div class="stars">
-      <span class="star" style="top: 14px; left: 22%;">✦</span>
-      <span class="star" style="top: 50px; left: 14%;">✿</span>
-      <span class="star" style="top: 24px; right: 26%;">✦</span>
-      <span class="star" style="bottom: 18px; left: 36%;">✿</span>
-      <span class="star" style="top: 42px; right: 16%;">✦</span>
-    </div>
-    <div class="banner-inner">
-      <div class="ja">shipping notebook</div>
-      <h1>出 貨 紀 錄</h1>
-      <div class="sub">泥 研 製 所</div>
-    </div>
+    <div class="ja">shipping notebook</div>
+    <h1>出 貨 紀 錄</h1>
+    <div class="sub">泥 研 製 所</div>
   </div>
 
   <div class="main">
@@ -1005,43 +1035,32 @@
     <!-- 新平台單 -->
     <section class="section" id="sec-platform">
       <div class="card">
-        <span class="tape t-purple">platform ✦ 新 平 台 單</span>
+        <span class="tape t-purple">platform ✦ 今 日 平 台 單</span>
         <div class="card-title">
           <span class="dot"></span>
-          <span>新 增 平 台 訂 單</span>
+          <span>今 日 全 平 台 訂 單</span>
         </div>
 
-        <div class="form-grid" style="margin-bottom: 18px;">
+        <div class="form-grid" style="margin-bottom: 14px;">
           <div class="field">
             <label>日 期</label>
             <input type="date" id="p_date">
           </div>
-          <div class="field">
-            <label>平 台</label>
-            <select id="p_platform">
-              <option value="Line禮物">Line禮物</option>
-              <option value="蝦皮">蝦皮</option>
-              <option value="Pinkoi">Pinkoi</option>
-              <option value="瑪黑">瑪黑</option>
-              <option value="官網">官網</option>
-              <option value="博客來">博客來</option>
-              <option value="酷澎">酷澎</option>
-            </select>
+          <div class="field" style="grid-column: span 2;">
+            <label>全 部 備 註</label>
+            <input type="text" id="p_global_note" placeholder="今日整體狀況（選填）">
           </div>
         </div>
 
-        <div id="p_logistics_area">
-          <!-- 動態產生 -->
-        </div>
+        <p style="font-size: 12px; color: var(--ink-soft); margin-bottom: 8px; letter-spacing: 1px;">
+          ※ 各平台依不同物流分別填寫件數，沒有的留空即可
+        </p>
 
-        <div class="field full" style="margin-top: 14px;">
-          <label>備 註</label>
-          <textarea id="p_note" placeholder="補充說明…"></textarea>
-        </div>
+        <div id="p_all_platforms"></div>
 
         <div class="btn-row">
           <button class="btn ghost" id="pReset">清 空</button>
-          <button class="btn primary" id="pSubmit">送 出</button>
+          <button class="btn primary" id="pSubmit">送 出 全 部</button>
         </div>
       </div>
     </section>
@@ -1093,6 +1112,11 @@
           </div>
           <div class="status" id="cfgStatus"></div>
           <p style="margin-top: 20px; font-size: 12px;">資料每 20 秒自動同步；新增/修改後立即同步。</p>
+
+          <div style="border-top: 1px dashed var(--line); margin-top: 24px; padding-top: 16px;">
+            <p style="margin-bottom: 8px; font-size: 12px;">清理舊版誤建的「廠商」選項（Line禮物/蝦皮/Pinkoi/瑪黑/官網/酷澎/無）</p>
+            <button class="btn small ghost" id="cfgCleanup">一 鍵 清 理</button>
+          </div>
         </div>
       </div>
     </section>
@@ -1261,6 +1285,7 @@ function renderAll() {
   renderHistory();
   renderSelects();
   renderColorGrid();
+  renderPlatformForm();
   $('#todayDateLabel').textContent = todayStr();
 }
 
@@ -1881,97 +1906,161 @@ function openOrderEdit(o) {
   });
 }
 
-/* ============ 平台單表單 ============ */
-function renderLogisticsForm(platform, existing) {
-  const area = $('#p_logistics_area');
-  const options = PLATFORM_LOGISTICS[platform] || [];
-  const map = {};
-  if (existing && Array.isArray(existing['明細'])) {
-    existing['明細'].forEach(d => { map[d.物流] = d.件數 || 0; });
-  }
-  if (!options.length) {
-    // 酷澎這類：直接填總件數
-    area.innerHTML = `
-      <div class="form-grid">
+/* ============ 平台單表單（合併） ============ */
+const PLATFORM_ORDER = ['Line禮物','蝦皮','Pinkoi','瑪黑','官網','博客來','酷澎'];
+
+function renderPlatformForm() {
+  const area = $('#p_all_platforms');
+  const date = $('#p_date').value || todayStr();
+  const todayRecs = {};
+  state.platforms.filter(p => fmtDate(p['日期']) === date).forEach(p => {
+    todayRecs[p['平台']] = p;
+  });
+
+  area.innerHTML = '<div class="pf-form">' + PLATFORM_ORDER.map(name => {
+    const opts = PLATFORM_LOGISTICS[name] || [];
+    const existing = todayRecs[name];
+    const map = {};
+    if (existing && Array.isArray(existing['明細'])) {
+      existing['明細'].forEach(d => { map[d.物流] = d.件數 || 0; });
+    }
+    const noteVal = existing ? (existing['備註']||'') : '';
+
+    let inputs = '';
+    if (!opts.length) {
+      // 酷澎
+      inputs = `
         <div class="field">
-          <label>總 件 數</label>
-          <input type="number" id="p_total_only" min="0" value="${existing ? existing['總件數']||0 : ''}">
+          <label>總件數</label>
+          <input type="number" min="0" class="pf-input" data-pf="${name}" data-logi="__total__" value="${existing ? existing['總件數']||'' : ''}">
+        </div>
+      `;
+    } else {
+      inputs = opts.map(opt => `
+        <div class="field">
+          <label>${opt}</label>
+          <input type="number" min="0" class="pf-input" data-pf="${escapeAttr(name)}" data-logi="${escapeAttr(opt)}" value="${map[opt]||''}">
+        </div>
+      `).join('');
+    }
+
+    return `
+      <div class="pf-form-card" data-platform="${escapeAttr(name)}">
+        <div class="pf-form-head">
+          <span class="pf-name">${name}</span>
+          <span class="pf-sum">小計 <b data-sum="${escapeAttr(name)}">0</b></span>
+        </div>
+        <div class="pf-inputs">${inputs}</div>
+        <div class="pf-form-note">
+          <input type="text" class="pf-note-input" data-pf="${escapeAttr(name)}" placeholder="此平台備註（如未出完貨原因…）" value="${escapeAttr(noteVal)}">
         </div>
       </div>
-      <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">此平台不需選擇物流。</p>
     `;
-  } else {
-    area.innerHTML = `
-      <div class="form-grid">
-        ${options.map(opt => `
-          <div class="field">
-            <label>${opt}</label>
-            <input type="number" class="p-logi-input" min="0" data-logi="${escapeAttr(opt)}" value="${map[opt]||''}">
-          </div>
-        `).join('')}
-      </div>
-      <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">分別填入各物流的件數。</p>
-    `;
-  }
+  }).join('') + '</div>';
+
+  // 綁定即時加總
+  area.querySelectorAll('.pf-input').forEach(inp => {
+    inp.addEventListener('input', () => updatePfSum(inp.dataset.pf));
+  });
+  PLATFORM_ORDER.forEach(updatePfSum);
 }
 
-function collectPlatformPayload() {
-  const platform = $('#p_platform').value;
-  const options = PLATFORM_LOGISTICS[platform] || [];
-  let detail = [];
-  let total = 0;
-  if (!options.length) {
-    total = Number($('#p_total_only').value) || 0;
-  } else {
-    document.querySelectorAll('.p-logi-input').forEach(inp => {
-      const n = Number(inp.value) || 0;
-      if (n > 0) detail.push({ 物流: inp.dataset.logi, 件數: n });
-      total += n;
-    });
-  }
-  return {
-    '日期': $('#p_date').value,
-    '平台': platform,
-    '明細': detail,
-    '總件數': total,
-    '備註': $('#p_note').value
-  };
+function updatePfSum(name) {
+  let sum = 0;
+  document.querySelectorAll(`.pf-input[data-pf="${cssEscape(name)}"]`).forEach(inp => {
+    sum += Number(inp.value) || 0;
+  });
+  const el = document.querySelector(`[data-sum="${cssEscape(name)}"]`);
+  if (el) el.textContent = sum;
+  const card = document.querySelector(`.pf-form-card[data-platform="${cssEscape(name)}"]`);
+  if (card) card.classList.toggle('has-data', sum > 0);
+}
+
+function cssEscape(s) {
+  return String(s).replace(/"/g,'\\"');
 }
 
 function resetPlatformForm() {
   $('#p_date').value = todayStr();
-  $('#p_note').value = '';
-  renderLogisticsForm($('#p_platform').value);
+  $('#p_global_note').value = '';
+  renderPlatformForm();
 }
 
-$('#p_platform').addEventListener('change', () => renderLogisticsForm($('#p_platform').value));
+$('#p_date').addEventListener('change', renderPlatformForm);
 $('#pReset').addEventListener('click', resetPlatformForm);
 
 $('#pSubmit').addEventListener('click', async () => {
   if (!API_URL) { toast('請先設定 API 網址', true); return; }
-  const data = collectPlatformPayload();
-  if (!data['日期']) { toast('請選日期', true); return; }
-  if (!data['總件數']) { toast('總件數為 0，請填件數', true); return; }
+  const date = $('#p_date').value;
+  if (!date) { toast('請選日期', true); return; }
+  const globalNote = $('#p_global_note').value;
 
-  // 檢查當日同平台是否已存在 → 更新
-  const exist = state.platforms.find(p => fmtDate(p['日期']) === data['日期'] && p['平台'] === data['平台']);
-  const btn = $('#pSubmit'); btn.disabled = true; const o = btn.textContent; btn.textContent = '送 出 中…';
-  try {
-    if (exist) {
-      if (!confirm(`${data['平台']} 在 ${data['日期']} 已有紀錄（總件數 ${exist['總件數']}），要覆蓋嗎？`)) {
-        btn.disabled = false; btn.textContent = o; return;
-      }
-      await api('updatePlatform', Object.assign({ id: exist.id }, data));
-      toast('已更新');
+  // 收集所有平台資料
+  const items = []; // 要送的資料
+  PLATFORM_ORDER.forEach(name => {
+    const opts = PLATFORM_LOGISTICS[name] || [];
+    let detail = [], total = 0;
+    if (!opts.length) {
+      const inp = document.querySelector(`.pf-input[data-pf="${cssEscape(name)}"][data-logi="__total__"]`);
+      total = inp ? (Number(inp.value)||0) : 0;
     } else {
-      await api('addPlatform', data);
-      toast('已送出');
+      document.querySelectorAll(`.pf-input[data-pf="${cssEscape(name)}"]`).forEach(inp => {
+        const n = Number(inp.value) || 0;
+        if (n > 0) detail.push({ 物流: inp.dataset.logi, 件數: n });
+        total += n;
+      });
     }
-    resetPlatformForm();
+    const noteInp = document.querySelector(`.pf-note-input[data-pf="${cssEscape(name)}"]`);
+    const note = noteInp ? noteInp.value.trim() : '';
+
+    // 只送有資料或有備註的（避免空白送一堆 0）
+    if (total > 0 || note) {
+      items.push({ 平台: name, 明細: detail, 總件數: total, 備註: note });
+    }
+  });
+
+  if (!items.length) { toast('沒有任何資料可送出', true); return; }
+
+  const btn = $('#pSubmit');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '送 出 中…';
+
+  try {
+    // 對每個平台：若當日已有則更新、否則新增
+    let added = 0, updated = 0;
+    for (const item of items) {
+      const exist = state.platforms.find(p => fmtDate(p['日期']) === date && p['平台'] === item.平台);
+      const note = item.備註 || globalNote;
+      if (exist) {
+        await api('updatePlatform', {
+          id: exist.id,
+          '明細': item.明細,
+          '總件數': item.總件數,
+          '備註': note
+        });
+        updated++;
+      } else {
+        await api('addPlatform', {
+          '日期': date,
+          '平台': item.平台,
+          '明細': item.明細,
+          '總件數': item.總件數,
+          '備註': note
+        });
+        added++;
+      }
+    }
+    toast(`已送出 ${added + updated} 筆`);
     await loadAll();
+    renderPlatformForm();
     switchTab('board');
-  } catch (e) { toast(e.message, true); }
-  finally { btn.disabled = false; btn.textContent = o; }
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
 });
 
 /* ----- 平台單編輯 Modal ----- */
@@ -2082,6 +2171,14 @@ $('#cfgTest').addEventListener('click', async () => {
   } catch (e) {
     s.textContent = '✗ ' + e.message; s.className = 'status err';
   }
+});
+$('#cfgCleanup').addEventListener('click', async () => {
+  if (!confirm('將清除「廠商」分類中誤建的：Line禮物、蝦皮、Pinkoi、瑪黑、官網、酷澎、無，以及整個「包裹類型」分類。確定嗎？')) return;
+  try {
+    const r = await api('cleanupVendor');
+    toast(`已清除 ${r.removed} 筆`);
+    await loadAll();
+  } catch (e) { toast(e.message, true); }
 });
 
 /* ============ 啟動 ============ */
