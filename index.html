@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>泥研製所 · 出貨紀錄</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Klee+One:wght@400;600&family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ 基本 ============ */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --paper: #faf6ec;
+    --paper-2: #f3ecd9;
+    --ink: #3a352e;
+    --ink-soft: #6b6258;
+    --line: #d9cfb8;
+    --line-dark: #b8a988;
+
+    --tape-pink: #f4c8c1;
+    --tape-blue: #b9d4d8;
+    --tape-yellow: #f0d98a;
+    --tape-green: #c5d9b0;
+    --tape-purple: #ccc1de;
+
+    --stamp-red: #c8554a;
+    --stamp-blue: #4a6f8a;
+
+    --tag-line: rgba(120, 100, 70, 0.5);
+  }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Klee One', 'Shippori Mincho', 'Noto Sans TC', serif;
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* 紙質紋理 */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(180,150,90,0.04) 0, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(180,150,90,0.04) 0, transparent 40%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 0 0.3 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    z-index: 0;
+  }
+
+  .app {
+    position: relative; z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+
+  /* ============ 標頭 ============ */
+  .header {
+    text-align: center;
+    padding: 18px 0 12px;
+    border-bottom: 1.5px dashed var(--line-dark);
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .header .ja {
+    font-family: 'Caveat', cursive;
+    color: var(--ink-soft);
+    font-size: 22px;
+    letter-spacing: 2px;
+    transform: rotate(-1deg);
+    display: inline-block;
+  }
+  .header h1 {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    font-size: 32px;
+    letter-spacing: 4px;
+    margin: 4px 0 2px;
+  }
+  .header .sub {
+    color: var(--ink-soft);
+    font-size: 13px;
+    letter-spacing: 6px;
+  }
+  .header::before {
+    content: '✦';
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--line-dark);
+  }
+
+  /* ============ 分頁 ============ */
+  .tabs {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .tab {
+    font-family: 'Klee One', serif;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 8px 18px;
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1.5px solid var(--line-dark);
+    border-radius: 22px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    letter-spacing: 1px;
+  }
+  .tab:hover { background: var(--paper-2); }
+  .tab.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -8px; left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--ink);
+  }
+
+  /* ============ 紙膠帶 + 區塊 ============ */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px 24px 24px;
+    margin-bottom: 20px;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(60,40,20,0.05);
+  }
+  .tape {
+    position: absolute;
+    top: -10px; left: 30px;
+    padding: 4px 24px;
+    background: var(--tape-pink);
+    transform: rotate(-2deg);
+    font-family: 'Caveat', cursive;
+    font-size: 16px;
+    color: var(--ink);
+    opacity: 0.92;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    letter-spacing: 1px;
+  }
+  .tape.t-blue   { background: var(--tape-blue); top: -10px; left: auto; right: 30px; transform: rotate(2deg); }
+  .tape.t-yellow { background: var(--tape-yellow); }
+  .tape.t-green  { background: var(--tape-green); }
+  .tape.t-purple { background: var(--tape-purple); }
+
+  /* ============ 表單 ============ */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px 18px;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label {
+    font-size: 12px;
+    color: var(--ink-soft);
+    letter-spacing: 2px;
+    padding-left: 2px;
+  }
+  .field label::before {
+    content: '·';
+    margin-right: 4px;
+  }
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    font-family: 'Klee One', serif;
+    font-size: 15px;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px dotted var(--line-dark);
+    padding: 6px 4px;
+    outline: none;
+    transition: border-color 0.2s;
+    border-radius: 0;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-bottom-color: var(--ink);
+    border-bottom-style: solid;
+  }
+  textarea {
+    border: 1.5px dotted var(--line-dark);
+    border-radius: 4px;
+    padding: 8px;
+    resize: vertical;
+    min-height: 64px;
+  }
+  select { cursor: pointer; }
+
+  /* combobox：可選可輸入 */
+  .combo { position: relative; }
+  .combo .add-btn {
+    position: absolute;
+    right: 2px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--ink-soft);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+  }
+  .combo .add-btn:hover { color: var(--stamp-red); }
+
+  /* 包裝方式 chips */
+  .pack-block { margin-top: 6px; }
+  .pack-block .pack-grid {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 8px;
+  }
+  .chip {
+    font-family: 'Klee One', serif;
+    font-size: 13px;
+    padding: 4px 12px;
+    background: var(--paper-2);
+    border: 1px solid var(--line-dark);
+    border-radius: 14px;
+    cursor: pointer;
+    color: var(--ink-soft);
+    user-select: none;
+  }
+  .chip:hover { background: var(--tape-yellow); }
+  .chip.on {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .pack-detail {
+    display: none;
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: var(--paper-2);
+    border-radius: 4px;
+    border-left: 3px solid var(--line-dark);
+  }
+  .pack-detail.show { display: block; }
+  .pack-detail-row {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .pack-detail-row:last-child { margin-bottom: 0; }
+  .pack-detail label {
+    font-size: 12px; color: var(--ink-soft);
+    letter-spacing: 1px;
+  }
+  .pack-detail select, .pack-detail input {
+    background: var(--paper);
+  }
+
+  /* ============ 按鈕 ============ */
+  .btn-row {
+    display: flex; gap: 12px; justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--line);
+  }
+  .btn {
+    font-family: 'Klee One', serif;
+    font-size: 14px;
+    padding: 8px 22px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 22px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn.primary { background: var(--ink); color: var(--paper); }
+  .btn.primary:hover { background: var(--stamp-red); border-color: var(--stamp-red); }
+  .btn.ghost { border-color: var(--line-dark); color: var(--ink-soft); }
+  .btn.small { font-size: 12px; padding: 4px 14px; letter-spacing: 1px; }
+  .btn.danger { border-color: var(--stamp-red); color: var(--stamp-red); }
+  .btn.danger:hover { background: var(--stamp-red); color: var(--paper); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ============ 佈告欄訂單卡 ============ */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .order-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 18px 16px 14px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 5px rgba(60,40,20,0.05);
+  }
+  .order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(60,40,20,0.1);
+  }
+  .order-card.done { background: var(--paper-2); opacity: 0.85; }
+  .order-card.done::before {
+    content: '完了';
+    position: absolute;
+    top: 12px; right: 14px;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 20px;
+    color: var(--stamp-red);
+    border: 2px solid var(--stamp-red);
+    padding: 2px 8px;
+    transform: rotate(8deg);
+    opacity: 0.55;
+    letter-spacing: 2px;
+    border-radius: 3px;
+  }
+  .order-card.urgent::after {
+    content: '急';
+    position: absolute;
+    top: -8px; right: 14px;
+    background: var(--stamp-red);
+    color: var(--paper);
+    font-size: 13px;
+    padding: 2px 10px;
+    border-radius: 3px;
+    letter-spacing: 4px;
+  }
+
+  .oc-date {
+    font-size: 12px; color: var(--ink-soft);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    border-bottom: 1px dotted var(--line);
+    padding-bottom: 6px;
+  }
+  .oc-date .due { color: var(--stamp-red); font-weight: 600; }
+  .oc-vendor {
+    display: inline-block;
+    font-family: 'Caveat', cursive;
+    font-size: 18px;
+    background: var(--tape-blue);
+    padding: 0 8px;
+    border-radius: 2px;
+    margin-bottom: 8px;
+    transform: rotate(-1deg);
+  }
+  .oc-vendor.line     { background: var(--tape-green); }
+  .oc-vendor.shopee   { background: var(--tape-pink); }
+  .oc-vendor.pinkoi   { background: var(--tape-purple); }
+  .oc-vendor.marais   { background: var(--tape-yellow); }
+  .oc-vendor.books    { background: var(--tape-blue); }
+  .oc-vendor.coupang  { background: var(--tape-pink); }
+
+  .oc-item {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 19px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .oc-spec {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+  .oc-spec span { margin-right: 8px; }
+
+  .oc-qty {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 2px;
+    margin: 8px 0 4px;
+  }
+  .oc-qty .done-num { color: var(--stamp-blue); }
+  .oc-qty .slash { color: var(--line-dark); margin: 0 4px; }
+
+  .oc-progress-bar {
+    height: 4px;
+    background: var(--paper-2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .oc-progress-bar > div {
+    height: 100%;
+    background: var(--stamp-blue);
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+  .oc-progress-bar.complete > div { background: var(--stamp-red); }
+
+  .oc-pack {
+    font-size: 12px;
+    color: var(--ink-soft);
+    background: var(--paper-2);
+    padding: 6px 8px;
+    border-radius: 3px;
+    margin: 6px 0;
+    border-left: 2px solid var(--tape-pink);
+  }
+  .oc-note {
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-style: italic;
+    border-top: 1px dotted var(--line);
+    padding-top: 6px;
+    margin-top: 6px;
+  }
+  .oc-package {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--ink-soft);
+    border: 1px solid var(--line-dark);
+    border-radius: 10px;
+    padding: 1px 8px;
+    margin-top: 4px;
+  }
+
+  /* ============ Modal ============ */
+  .modal-bg {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(40,30,20,0.4);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--paper);
+    border-radius: 6px;
+    padding: 30px 24px 20px;
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    position: relative;
+  }
+  .modal h2 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 20px;
+    letter-spacing: 3px;
+    margin-bottom: 16px;
+    text-align: center;
+    border-bottom: 1.5px dashed var(--line-dark);
+    padding-bottom: 10px;
+  }
+  .modal-close {
+    position: absolute;
+    top: 12px; right: 16px;
+    background: none; border: none;
+    font-size: 22px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  /* 進度勾選列 */
+  .progress-entry {
+    display: flex; gap: 8px; align-items: center;
+    padding: 8px 10px;
+    background: var(--paper-2);
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .progress-entry .who {
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .progress-entry .when {
+    color: var(--ink-soft);
+    font-size: 11px;
+  }
+  .progress-entry .qty {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--stamp-blue);
+    margin-left: auto;
+  }
+  .progress-entry .del-btn {
+    background: none; border: none;
+    color: var(--ink-soft);
+    cursor: pointer; font-size: 16px;
+    padding: 0 4px;
+  }
+  .progress-entry .del-btn:hover { color: var(--stamp-red); }
+
+  /* 完成方式切換 */
+  .qty-mode {
+    display: flex; gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .qty-mode .qty-input {
+    flex: 1; min-width: 100px;
+  }
+  .qty-check-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    background: var(--tape-green);
+    border-radius: 4px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .qty-check-row input[type="checkbox"] {
+    width: 18px; height: 18px;
+    cursor: pointer;
+  }
+  .qty-check-row label { cursor: pointer; flex: 1; }
+
+  /* ============ 製造完成清單 ============ */
+  .mfg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .mfg-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--tape-green);
+    border-radius: 4px;
+    padding: 12px 14px;
+  }
+  .mfg-item {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .mfg-spec {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .mfg-nums {
+    display: flex; gap: 16px;
+    font-size: 14px;
+  }
+  .mfg-nums b {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 18px;
+    color: var(--stamp-blue);
+  }
+
+  /* ============ 今日 ============ */
+  .today-list {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .today-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    border-left: 4px solid var(--tape-yellow);
+  }
+  .today-row.done { border-left-color: var(--stamp-red); opacity: 0.7; }
+  .today-row .t-item {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 16px; font-weight: 700;
+    flex: 1;
+  }
+  .today-row .t-vendor {
+    font-family: 'Caveat', cursive;
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .today-row .t-qty {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 18px; font-weight: 700;
+    min-width: 80px; text-align: right;
+  }
+
+  /* ============ 設定 ============ */
+  .settings-section {
+    text-align: center;
+    padding: 20px 0;
+    color: var(--ink-soft);
+    font-size: 13px;
+  }
+  .settings-section input {
+    text-align: center;
+    width: 100%;
+    max-width: 480px;
+    margin: 10px 0;
+  }
+  .settings-section .status {
+    margin-top: 10px;
+    font-family: 'Caveat', cursive;
+    font-size: 18px;
+  }
+  .status.ok  { color: #5b8c5a; }
+  .status.err { color: var(--stamp-red); }
+
+  .empty {
+    text-align: center;
+    color: var(--ink-soft);
+    padding: 40px 0;
+    font-family: 'Caveat', cursive;
+    font-size: 24px;
+    letter-spacing: 2px;
+  }
+  .empty::before { content: '☁'; display: block; font-size: 36px; margin-bottom: 8px; opacity: 0.5; }
+
+  /* ============ Toast ============ */
+  .toast {
+    position: fixed;
+    bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 24px;
+    border-radius: 22px;
+    font-family: 'Klee One', serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    z-index: 1000;
+    opacity: 0;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  .toast.err { background: var(--stamp-red); }
+
+  /* 篩選列 */
+  .filter-row {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    background: var(--paper-2);
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .filter-row label { color: var(--ink-soft); letter-spacing: 1px; }
+  .filter-row .seg {
+    display: flex; gap: 4px;
+    border: 1px solid var(--line-dark);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--paper);
+  }
+  .filter-row .seg button {
+    background: transparent;
+    border: none;
+    padding: 4px 12px;
+    font-family: 'Klee One', serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .filter-row .seg button.on { background: var(--ink); color: var(--paper); }
+
+  @media (max-width: 600px) {
+    .header h1 { font-size: 24px; letter-spacing: 2px; }
+    .tab { padding: 6px 12px; font-size: 13px; }
+    .card { padding: 24px 16px 16px; }
+    .tape { left: 16px; }
+    .tape.t-blue { right: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="ja">shipping notebook</div>
+    <h1>出 貨 紀 錄</h1>
+    <div class="sub">泥 研 製 所</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="board">佈 告 欄</button>
+    <button class="tab" data-tab="new">新 增 訂 單</button>
+    <button class="tab" data-tab="today">今 日</button>
+    <button class="tab" data-tab="mfg">製 造 完 成</button>
+    <button class="tab" data-tab="settings">設 定</button>
+  </div>
+
+  <!-- 佈告欄 -->
+  <section class="section active" id="sec-board">
+    <div class="filter-row">
+      <label>顯示</label>
+      <div class="seg" id="boardFilter">
+        <button class="on" data-f="all">全部</button>
+        <button data-f="open">未完成</button>
+        <button data-f="done">已完成</button>
+      </div>
+      <label style="margin-left: 12px;">日期</label>
+      <input type="date" id="boardDate" style="border-bottom: 1.5px dotted var(--line-dark);">
+      <button class="btn small ghost" id="boardClearDate">清除</button>
+    </div>
+    <div class="board" id="boardList"></div>
+  </section>
+
+  <!-- 新增訂單 -->
+  <section class="section" id="sec-new">
+    <div class="card">
+      <span class="tape">order ✦ 新 單</span>
+      <div class="form-grid">
+        <div class="field">
+          <label>下 單 日</label>
+          <input type="date" id="f_date">
+        </div>
+        <div class="field">
+          <label>交 期</label>
+          <input type="date" id="f_due">
+        </div>
+        <div class="field">
+          <label>廠 商</label>
+          <div class="combo">
+            <select id="f_vendor"></select>
+            <button class="add-btn" data-add="廠商" title="新增廠商">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>包 裹 類 型</label>
+          <div class="combo">
+            <select id="f_package"></select>
+            <button class="add-btn" data-add="包裹類型" title="新增類型">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>品 項</label>
+          <div class="combo">
+            <select id="f_item"></select>
+            <button class="add-btn" data-add="品項" title="新增品項">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>款 式</label>
+          <div class="combo">
+            <select id="f_style"></select>
+            <button class="add-btn" data-add="款式" title="新增款式">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>顏 色</label>
+          <div class="combo">
+            <select id="f_color"></select>
+            <button class="add-btn" data-add="顏色" title="新增顏色">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>大 小</label>
+          <div class="combo">
+            <select id="f_size"></select>
+            <button class="add-btn" data-add="大小" title="新增大小">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>數 量</label>
+          <input type="number" id="f_qty" min="0" placeholder="—">
+        </div>
+
+        <div class="field full pack-block">
+          <label>包 裝 方 式（選填）</label>
+          <div class="pack-grid">
+            <div class="chip" data-pack="oil">+ 精油</div>
+            <div class="chip" data-pack="box">紙盒 / 裸裝</div>
+            <div class="chip" data-pack="seal">封條</div>
+            <div class="chip" data-pack="card">小卡</div>
+          </div>
+
+          <div class="pack-detail" id="pack-oil">
+            <div class="pack-detail-row">
+              <label>容量</label>
+              <select id="oil-size">
+                <option value="">—</option>
+                <option>5ml</option>
+                <option>10ml</option>
+              </select>
+              <label>口味</label>
+              <select id="oil-flavor">
+                <option value="">—</option>
+                <option>薰衣草</option>
+                <option>佛手柑</option>
+                <option>玫瑰天竺葵</option>
+                <option>甜橙</option>
+                <option>檸檬</option>
+                <option>茶樹</option>
+                <option>檜木</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pack-detail" id="pack-box">
+            <div class="pack-detail-row">
+              <select id="box-type">
+                <option value="">—</option>
+                <option>紙盒</option>
+                <option>裸裝</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pack-detail" id="pack-seal">
+            <div class="pack-detail-row">
+              <label>封條</label>
+              <input type="text" id="seal-type" placeholder="種類">
+            </div>
+          </div>
+
+          <div class="pack-detail" id="pack-card">
+            <div class="pack-detail-row">
+              <label>小卡</label>
+              <input type="text" id="card-type" placeholder="種類">
+            </div>
+          </div>
+        </div>
+
+        <div class="field full">
+          <label>備 註</label>
+          <textarea id="f_note" placeholder="任何補充說明…"></textarea>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn ghost" id="btnReset">清 空</button>
+        <button class="btn primary" id="btnSubmit">送 出</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 今日 -->
+  <section class="section" id="sec-today">
+    <div class="card">
+      <span class="tape t-yellow">today ✦ 今 日</span>
+      <div class="today-list" id="todayList"></div>
+    </div>
+  </section>
+
+  <!-- 製造完成 -->
+  <section class="section" id="sec-mfg">
+    <div class="card">
+      <span class="tape t-green">stock ✦ 製造完成</span>
+      <p style="font-size: 13px; color: var(--ink-soft); margin-bottom: 16px;">
+        來自製造紀錄的累計數量，可用於包貨人員參考目前手邊有什麼商品可出。
+      </p>
+      <div class="mfg-grid" id="mfgList"></div>
+    </div>
+  </section>
+
+  <!-- 設定 -->
+  <section class="section" id="sec-settings">
+    <div class="card">
+      <span class="tape t-purple">setup ✦ 設 定</span>
+      <div class="settings-section">
+        <p style="margin-bottom: 8px;">Apps Script 網頁應用程式網址</p>
+        <input type="text" id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        <div>
+          <button class="btn small" id="cfgSave">儲 存</button>
+          <button class="btn small ghost" id="cfgTest">測 試 連 線</button>
+        </div>
+        <div class="status" id="cfgStatus"></div>
+        <p style="margin-top: 24px; font-size: 12px;">資料每 20 秒自動同步一次；新增/修改後立即同步。</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 訂單編輯 / 進度 Modal -->
+<div class="modal-bg" id="orderModal">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2 id="omTitle">訂 單</h2>
+    <div id="omBody"></div>
+  </div>
+</div>
+
+<!-- 新增選項 Modal -->
+<div class="modal-bg" id="addModal">
+  <div class="modal" style="max-width: 360px;">
+    <button class="modal-close" data-close>×</button>
+    <h2 id="amTitle">新 增</h2>
+    <div style="padding: 10px 0;">
+      <input type="text" id="amInput" placeholder="輸入新項目">
+    </div>
+    <div class="btn-row" style="border: none; padding: 0;">
+      <button class="btn ghost" data-close>取消</button>
+      <button class="btn primary" id="amSave">確 定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ 設定 ============ */
+const LS_URL = 'shippingApiUrl_v1';
+const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
+
+let API_URL = localStorage.getItem(LS_URL) || '';
+let state = {
+  orders: [],
+  progress: [],
+  settings: {},
+  mfg: [],
+};
+let boardFilter = 'all';
+let boardDate = '';
+let pollTimer = null;
+
+/* ============ 工具 ============ */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+function toast(msg, err = false) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.toggle('err', err);
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+function todayStr() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function fmtDate(s) {
+  if (!s) return '';
+  const d = String(s);
+  if (d.length >= 10) return d.slice(0,10);
+  return d;
+}
+function vendorClass(v) {
+  if (!v) return '';
+  if (v.includes('Line')) return 'line';
+  if (v.includes('蝦皮')) return 'shopee';
+  if (v.includes('Pinkoi')) return 'pinkoi';
+  if (v.includes('瑪黑')) return 'marais';
+  if (v.includes('博客來')) return 'books';
+  if (v.includes('酷澎')) return 'coupang';
+  return '';
+}
+
+/* ============ API ============ */
+async function api(action, payload = {}) {
+  if (!API_URL) throw new Error('尚未設定 API 網址');
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action, payload }),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // 避免 CORS preflight
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || '未知錯誤');
+  return data.data;
+}
+
+async function loadAll() {
+  if (!API_URL) return;
+  try {
+    const [main, mfg] = await Promise.all([
+      api('readAll'),
+      api('readMfgDone').catch(() => []),
+    ]);
+    state.orders = main.orders || [];
+    state.progress = main.progress || [];
+    state.settings = main.settings || {};
+    state.mfg = mfg || [];
+    renderAll();
+  } catch (e) {
+    console.error(e);
+    toast('同步失敗：' + e.message, true);
+  }
+}
+
+/* ============ 渲染 ============ */
+function progressOf(orderId) {
+  return state.progress.filter(p => p['訂單id'] === orderId);
+}
+function doneOf(orderId) {
+  return progressOf(orderId).reduce((s, p) => s + (Number(p['完成數量']) || 0), 0);
+}
+
+function renderAll() {
+  renderBoard();
+  renderToday();
+  renderMfg();
+  renderSelects();
+}
+
+function renderBoard() {
+  const list = $('#boardList');
+  let orders = state.orders.slice();
+
+  // 篩選
+  if (boardFilter === 'open') {
+    orders = orders.filter(o => doneOf(o.id) < (Number(o['數量']) || Infinity));
+  } else if (boardFilter === 'done') {
+    orders = orders.filter(o => Number(o['數量']) > 0 && doneOf(o.id) >= Number(o['數量']));
+  }
+  if (boardDate) {
+    orders = orders.filter(o => fmtDate(o['下單日期']) === boardDate);
+  }
+
+  // 排序：未完成在前，交期近的優先
+  orders.sort((a,b) => {
+    const aDone = Number(a['數量']) > 0 && doneOf(a.id) >= Number(a['數量']);
+    const bDone = Number(b['數量']) > 0 && doneOf(b.id) >= Number(b['數量']);
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    const aDue = a['交期'] || '9999-99-99';
+    const bDue = b['交期'] || '9999-99-99';
+    if (aDue !== bDue) return aDue < bDue ? -1 : 1;
+    return (b['建立時間'] || '').localeCompare(a['建立時間'] || '');
+  });
+
+  if (!orders.length) {
+    list.innerHTML = '<div class="empty" style="grid-column: 1 / -1;">空空如也</div>';
+    return;
+  }
+
+  list.innerHTML = orders.map(o => {
+    const qty = Number(o['數量']) || 0;
+    const done = doneOf(o.id);
+    const isDone = qty > 0 && done >= qty;
+    const isUrgent = o['交期'] && o['交期'] === todayStr();
+    const vCls = vendorClass(o['廠商']);
+    const pct = qty > 0 ? Math.min(100, (done / qty * 100)) : 0;
+
+    const specs = [o['款式'], o['顏色'], o['大小']].filter(Boolean).join(' / ');
+    const itemTxt = o['品項'] || '（未指定品項）';
+
+    return `
+      <div class="order-card ${isDone ? 'done' : ''} ${isUrgent ? 'urgent' : ''}" data-id="${o.id}">
+        <div class="oc-date">
+          下單 ${fmtDate(o['下單日期']) || '—'}
+          ${o['交期'] ? `<span class="due">／ 交期 ${fmtDate(o['交期'])}</span>` : ''}
+        </div>
+        ${o['廠商'] ? `<div class="oc-vendor ${vCls}">${o['廠商']}</div>` : ''}
+        <div class="oc-item">${itemTxt}</div>
+        ${specs ? `<div class="oc-spec">${specs}</div>` : ''}
+        ${qty > 0 ? `
+          <div class="oc-qty">
+            <span class="done-num">${done}</span>
+            <span class="slash">／</span>
+            <span>${qty}</span>
+          </div>
+          <div class="oc-progress-bar ${isDone ? 'complete' : ''}"><div style="width: ${pct}%"></div></div>
+        ` : ''}
+        ${o['包裝方式'] ? `<div class="oc-pack">📦 ${escapeHtml(o['包裝方式'])}</div>` : ''}
+        ${o['包裹類型'] ? `<div class="oc-package">${o['包裹類型']}</div>` : ''}
+        ${o['備註'] ? `<div class="oc-note">${escapeHtml(o['備註'])}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // 綁定點擊
+  list.querySelectorAll('.order-card').forEach(card => {
+    card.addEventListener('click', () => openOrderModal(card.dataset.id));
+  });
+}
+
+function renderToday() {
+  const list = $('#todayList');
+  const today = todayStr();
+  const orders = state.orders.filter(o => fmtDate(o['下單日期']) === today);
+  if (!orders.length) {
+    list.innerHTML = '<div class="empty">今日尚無出貨單</div>';
+    return;
+  }
+  list.innerHTML = orders.map(o => {
+    const qty = Number(o['數量']) || 0;
+    const done = doneOf(o.id);
+    const isDone = qty > 0 && done >= qty;
+    const spec = [o['品項'], o['款式'], o['顏色'], o['大小']].filter(Boolean).join(' / ');
+    return `
+      <div class="today-row ${isDone ? 'done' : ''}" data-id="${o.id}">
+        <div class="t-item">${spec || '（無品項）'}</div>
+        <div class="t-vendor">${o['廠商'] || ''}</div>
+        <div class="t-qty">${qty > 0 ? done + ' / ' + qty : '—'}</div>
+      </div>
+    `;
+  }).join('');
+  list.querySelectorAll('.today-row').forEach(r => {
+    r.addEventListener('click', () => openOrderModal(r.dataset.id));
+  });
+}
+
+function renderMfg() {
+  const list = $('#mfgList');
+  if (!state.mfg || !state.mfg.length) {
+    list.innerHTML = '<div class="empty" style="grid-column: 1 / -1;">尚無製造紀錄</div>';
+    return;
+  }
+  list.innerHTML = state.mfg.map(m => {
+    const spec = [m['款式'], m['顏色'], m['大小']].filter(Boolean).join(' / ');
+    return `
+      <div class="mfg-card">
+        <div class="mfg-item">${m['品項'] || '—'}</div>
+        ${spec ? `<div class="mfg-spec">${spec}</div>` : ''}
+        <div class="mfg-nums">
+          <div>製造 <b>${m['製造數量'] || 0}</b></div>
+          ${m['清洗數量'] ? `<div>清洗 <b>${m['清洗數量']}</b></div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function fillSelect(sel, values, current) {
+  const cur = current != null ? current : sel.value;
+  sel.innerHTML = '<option value="">—</option>' +
+    (values || []).map(v => `<option value="${escapeAttr(v)}"${v === cur ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
+}
+
+function renderSelects() {
+  const s = state.settings || {};
+  fillSelect($('#f_vendor'),  s['廠商']);
+  fillSelect($('#f_package'), s['包裹類型']);
+  fillSelect($('#f_item'),    s['品項']);
+  fillSelect($('#f_style'),   s['款式']);
+  fillSelect($('#f_color'),   s['顏色']);
+  fillSelect($('#f_size'),    s['大小']);
+}
+
+/* ============ 表單 ============ */
+function getPackagingText() {
+  const parts = [];
+  if ($('.chip[data-pack="oil"]').classList.contains('on')) {
+    const size = $('#oil-size').value;
+    const flav = $('#oil-flavor').value;
+    let s = '+精油';
+    if (size) s += ' ' + size;
+    if (flav) s += '（' + flav + '）';
+    parts.push(s);
+  }
+  if ($('.chip[data-pack="box"]').classList.contains('on')) {
+    const t = $('#box-type').value;
+    if (t) parts.push(t);
+  }
+  if ($('.chip[data-pack="seal"]').classList.contains('on')) {
+    const t = $('#seal-type').value.trim();
+    parts.push('封條' + (t ? '（' + t + '）' : ''));
+  }
+  if ($('.chip[data-pack="card"]').classList.contains('on')) {
+    const t = $('#card-type').value.trim();
+    parts.push('小卡' + (t ? '（' + t + '）' : ''));
+  }
+  return parts.join('、');
+}
+
+function resetForm() {
+  $('#f_date').value = todayStr();
+  $('#f_due').value = '';
+  ['#f_vendor','#f_package','#f_item','#f_style','#f_color','#f_size','#f_qty','#f_note'].forEach(s => $(s).value = '');
+  $$('.chip').forEach(c => c.classList.remove('on'));
+  $$('.pack-detail').forEach(d => d.classList.remove('show'));
+  $('#oil-size').value = '';
+  $('#oil-flavor').value = '';
+  $('#box-type').value = '';
+  $('#seal-type').value = '';
+  $('#card-type').value = '';
+}
+
+async function submitOrder() {
+  if (!API_URL) { toast('請先到設定填入 API 網址', true); return; }
+  const date = $('#f_date').value;
+  if (!date) { toast('請選擇下單日期', true); return; }
+
+  const btn = $('#btnSubmit');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '送 出 中…';
+
+  try {
+    await api('addOrder', {
+      '下單日期': date,
+      '交期':    $('#f_due').value,
+      '廠商':    $('#f_vendor').value,
+      '包裹類型': $('#f_package').value,
+      '品項':    $('#f_item').value,
+      '款式':    $('#f_style').value,
+      '顏色':    $('#f_color').value,
+      '大小':    $('#f_size').value,
+      '數量':    $('#f_qty').value,
+      '包裝方式': getPackagingText(),
+      '備註':    $('#f_note').value,
+    });
+    toast('送出成功');
+    resetForm();
+    await loadAll();
+    switchTab('board');
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+/* ============ 包裝 chip ============ */
+$$('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.classList.toggle('on');
+    const key = chip.dataset.pack;
+    const detail = $('#pack-' + key);
+    if (detail) detail.classList.toggle('show', chip.classList.contains('on'));
+  });
+});
+
+/* ============ 新增選項 ============ */
+let addCategory = '';
+$$('.add-btn').forEach(b => {
+  b.addEventListener('click', (e) => {
+    e.preventDefault();
+    addCategory = b.dataset.add;
+    $('#amTitle').textContent = '新 增 ' + addCategory;
+    $('#amInput').value = '';
+    $('#addModal').classList.add('show');
+    setTimeout(() => $('#amInput').focus(), 50);
+  });
+});
+$('#amSave').addEventListener('click', async () => {
+  const val = $('#amInput').value.trim();
+  if (!val) { toast('不能空白', true); return; }
+  try {
+    await api('addSetting', { '類別': addCategory, '值': val });
+    if (!state.settings[addCategory]) state.settings[addCategory] = [];
+    if (state.settings[addCategory].indexOf(val) < 0) state.settings[addCategory].push(val);
+    renderSelects();
+    // 把新值選起來
+    const map = { '廠商':'#f_vendor','包裹類型':'#f_package','品項':'#f_item','款式':'#f_style','顏色':'#f_color','大小':'#f_size' };
+    const sel = map[addCategory];
+    if (sel) $(sel).value = val;
+    $('#addModal').classList.remove('show');
+    toast('已新增');
+  } catch (e) {
+    toast(e.message, true);
+  }
+});
+
+/* ============ 訂單 Modal ============ */
+let currentOrder = null;
+function openOrderModal(id) {
+  const o = state.orders.find(x => x.id === id);
+  if (!o) return;
+  currentOrder = o;
+  renderOrderModal();
+  $('#orderModal').classList.add('show');
+}
+function closeOrderModal() {
+  $('#orderModal').classList.remove('show');
+  currentOrder = null;
+}
+
+function renderOrderModal() {
+  const o = currentOrder;
+  const qty = Number(o['數量']) || 0;
+  const done = doneOf(o.id);
+  const remaining = Math.max(0, qty - done);
+  const isDone = qty > 0 && done >= qty;
+  const progress = progressOf(o.id);
+
+  $('#omTitle').textContent = `${o['品項'] || '訂單'} ${qty > 0 ? `(${done}/${qty})` : ''}`;
+
+  const specs = [o['款式'], o['顏色'], o['大小']].filter(Boolean).join(' / ');
+  const meta = [
+    o['廠商'] ? `廠商：${o['廠商']}` : '',
+    o['包裹類型'] ? `包裹：${o['包裹類型']}` : '',
+    `下單：${fmtDate(o['下單日期'])}`,
+    o['交期'] ? `交期：${fmtDate(o['交期'])}` : '',
+  ].filter(Boolean).join('　');
+
+  const staffOptions = STAFFS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  let html = `
+    <div style="font-size: 13px; color: var(--ink-soft); margin-bottom: 12px; line-height: 1.8;">
+      ${meta}<br>
+      ${specs ? '規格：' + specs + '<br>' : ''}
+      ${o['包裝方式'] ? '📦 ' + escapeHtml(o['包裝方式']) + '<br>' : ''}
+      ${o['備註'] ? '📝 ' + escapeHtml(o['備註']) : ''}
+    </div>
+  `;
+
+  if (qty > 0) {
+    html += `
+      <div style="margin: 10px 0 14px;">
+        <div style="font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; letter-spacing: 1px;">填入完成狀況</div>
+
+        <div class="qty-check-row" id="qChk" style="${isDone ? 'opacity:0.5;pointer-events:none;' : ''}">
+          <input type="checkbox" id="checkAll">
+          <label for="checkAll">一鍵完成剩餘 <b style="font-size:16px;">${remaining}</b> 個</label>
+        </div>
+
+        <div class="qty-mode" style="${isDone ? 'opacity:0.5;pointer-events:none;' : ''}">
+          <select id="pStaff">${staffOptions}</select>
+          <input type="number" class="qty-input" id="pQty" min="1" max="${remaining}" placeholder="或輸入數量…">
+          <button class="btn small primary" id="pSave">記 入</button>
+        </div>
+      </div>
+    `;
+  } else {
+    html += `<div style="font-size: 12px; color: var(--ink-soft); margin: 10px 0;">此訂單未設定數量，可直接修改或刪除。</div>`;
+  }
+
+  // 進度列表
+  if (progress.length) {
+    html += `<div style="border-top: 1px dashed var(--line); padding-top: 12px; margin-top: 8px;">
+      <div style="font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; letter-spacing: 2px;">完成紀錄</div>`;
+    progress.forEach(p => {
+      html += `
+        <div class="progress-entry">
+          <span class="who">${p['包貨人員'] || '—'}</span>
+          <span class="when">${fmtDate(p['完成日期'])}</span>
+          ${p['備註'] ? `<span style="color:var(--ink-soft);font-size:12px;">${escapeHtml(p['備註'])}</span>` : ''}
+          <span class="qty">+${p['完成數量']}</span>
+          <button class="del-btn" data-pid="${p.id}" title="刪除">×</button>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `
+    <div class="btn-row">
+      <button class="btn small danger" id="orderDel">刪 除 訂 單</button>
+      <button class="btn small ghost" id="orderEdit">編 輯</button>
+    </div>
+  `;
+  $('#omBody').innerHTML = html;
+
+  // 綁定
+  const chk = $('#checkAll');
+  const pQty = $('#pQty');
+  if (chk && pQty) {
+    chk.addEventListener('change', () => {
+      pQty.value = chk.checked ? remaining : '';
+    });
+    pQty.addEventListener('input', () => {
+      chk.checked = (Number(pQty.value) >= remaining && remaining > 0);
+    });
+  }
+  const pSave = $('#pSave');
+  if (pSave) pSave.addEventListener('click', addProgress);
+
+  // 刪除進度
+  $('#omBody').querySelectorAll('.del-btn').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('刪除這筆完成紀錄？')) return;
+      try {
+        await api('deleteProgress', { id: b.dataset.pid });
+        await loadAll();
+        if (currentOrder) renderOrderModal();
+        toast('已刪除');
+      } catch (e) { toast(e.message, true); }
+    });
+  });
+
+  $('#orderDel').addEventListener('click', async () => {
+    if (!confirm('確定刪除此訂單？相關完成紀錄也會刪除。')) return;
+    try {
+      await api('deleteOrder', { id: o.id });
+      closeOrderModal();
+      await loadAll();
+      toast('已刪除');
+    } catch (e) { toast(e.message, true); }
+  });
+
+  $('#orderEdit').addEventListener('click', () => openEditForm(o));
+}
+
+async function addProgress() {
+  const o = currentOrder;
+  if (!o) return;
+  const staff = $('#pStaff').value;
+  const qty = Number($('#pQty').value);
+  if (!staff) { toast('請選擇人員', true); return; }
+  if (!qty || qty <= 0) { toast('請輸入數量', true); return; }
+
+  try {
+    await api('addProgress', {
+      '訂單id': o.id,
+      '完成日期': todayStr(),
+      '包貨人員': staff,
+      '完成數量': qty,
+    });
+    await loadAll();
+    // 重新打開以更新
+    const updated = state.orders.find(x => x.id === o.id);
+    if (updated) {
+      currentOrder = updated;
+      renderOrderModal();
+    }
+    toast('已記入 +' + qty);
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ============ 編輯訂單 ============ */
+function openEditForm(o) {
+  const s = state.settings || {};
+  const opts = (arr, cur) => '<option value="">—</option>' + (arr || []).map(v => `<option ${v===cur?'selected':''}>${escapeHtml(v)}</option>`).join('');
+
+  $('#omTitle').textContent = '編 輯 訂 單';
+  $('#omBody').innerHTML = `
+    <div class="form-grid">
+      <div class="field"><label>下單日</label><input type="date" id="e_date" value="${fmtDate(o['下單日期'])}"></div>
+      <div class="field"><label>交期</label><input type="date" id="e_due" value="${fmtDate(o['交期'])}"></div>
+      <div class="field"><label>廠商</label><select id="e_vendor">${opts(s['廠商'], o['廠商'])}</select></div>
+      <div class="field"><label>包裹類型</label><select id="e_package">${opts(s['包裹類型'], o['包裹類型'])}</select></div>
+      <div class="field"><label>品項</label><select id="e_item">${opts(s['品項'], o['品項'])}</select></div>
+      <div class="field"><label>款式</label><select id="e_style">${opts(s['款式'], o['款式'])}</select></div>
+      <div class="field"><label>顏色</label><select id="e_color">${opts(s['顏色'], o['顏色'])}</select></div>
+      <div class="field"><label>大小</label><select id="e_size">${opts(s['大小'], o['大小'])}</select></div>
+      <div class="field"><label>數量</label><input type="number" id="e_qty" value="${o['數量'] || ''}"></div>
+      <div class="field full"><label>包裝方式</label><input type="text" id="e_pack" value="${escapeAttr(o['包裝方式'] || '')}"></div>
+      <div class="field full"><label>備註</label><textarea id="e_note">${escapeHtml(o['備註'] || '')}</textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn small ghost" id="eBack">返回</button>
+      <button class="btn small primary" id="eSave">儲 存</button>
+    </div>
+  `;
+  $('#eBack').addEventListener('click', () => renderOrderModal());
+  $('#eSave').addEventListener('click', async () => {
+    try {
+      await api('updateOrder', {
+        id: o.id,
+        '下單日期': $('#e_date').value,
+        '交期':    $('#e_due').value,
+        '廠商':    $('#e_vendor').value,
+        '包裹類型': $('#e_package').value,
+        '品項':    $('#e_item').value,
+        '款式':    $('#e_style').value,
+        '顏色':    $('#e_color').value,
+        '大小':    $('#e_size').value,
+        '數量':    $('#e_qty').value,
+        '包裝方式': $('#e_pack').value,
+        '備註':    $('#e_note').value,
+      });
+      await loadAll();
+      currentOrder = state.orders.find(x => x.id === o.id);
+      renderOrderModal();
+      toast('已儲存');
+    } catch (e) { toast(e.message, true); }
+  });
+}
+
+/* ============ 分頁切換 ============ */
+function switchTab(tab) {
+  $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.section').forEach(s => s.classList.toggle('active', s.id === 'sec-' + tab));
+}
+$$('.tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+/* ============ 篩選 ============ */
+$('#boardFilter').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  boardFilter = btn.dataset.f;
+  $('#boardFilter').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+  renderBoard();
+});
+$('#boardDate').addEventListener('change', e => { boardDate = e.target.value; renderBoard(); });
+$('#boardClearDate').addEventListener('click', () => { boardDate = ''; $('#boardDate').value = ''; renderBoard(); });
+
+/* ============ Modal 關閉 ============ */
+document.addEventListener('click', e => {
+  if (e.target.dataset.close !== undefined) {
+    e.target.closest('.modal-bg').classList.remove('show');
+    if (e.target.closest('#orderModal')) currentOrder = null;
+  }
+  if (e.target.classList.contains('modal-bg')) {
+    e.target.classList.remove('show');
+    if (e.target.id === 'orderModal') currentOrder = null;
+  }
+});
+
+/* ============ 設定 ============ */
+$('#cfgUrl').value = API_URL;
+$('#cfgSave').addEventListener('click', () => {
+  API_URL = $('#cfgUrl').value.trim();
+  localStorage.setItem(LS_URL, API_URL);
+  toast('已儲存');
+  loadAll();
+});
+$('#cfgTest').addEventListener('click', async () => {
+  const s = $('#cfgStatus');
+  s.textContent = '測試中…';
+  s.className = 'status';
+  try {
+    await api('readAll');
+    s.textContent = '✓ 連線成功';
+    s.className = 'status ok';
+  } catch (e) {
+    s.textContent = '✗ ' + e.message;
+    s.className = 'status err';
+  }
+});
+
+/* ============ 送出/重置 ============ */
+$('#btnSubmit').addEventListener('click', submitOrder);
+$('#btnReset').addEventListener('click', resetForm);
+
+/* ============ 跳脫 ============ */
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+/* ============ 啟動 ============ */
+resetForm();
+if (API_URL) {
+  loadAll();
+  pollTimer = setInterval(loadAll, 20000);
+} else {
+  switchTab('settings');
+  toast('請先設定 API 網址', true);
+}
+</script>
+</body>
+</html>
