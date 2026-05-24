@@ -1112,11 +1112,6 @@
           </div>
           <div class="status" id="cfgStatus"></div>
           <p style="margin-top: 20px; font-size: 12px;">資料每 20 秒自動同步；新增/修改後立即同步。</p>
-
-          <div style="border-top: 1px dashed var(--line); margin-top: 24px; padding-top: 16px;">
-            <p style="margin-bottom: 8px; font-size: 12px;">清理舊版誤建的「廠商」選項（Line禮物/蝦皮/Pinkoi/瑪黑/官網/酷澎/無）</p>
-            <button class="btn small ghost" id="cfgCleanup">一 鍵 清 理</button>
-          </div>
         </div>
       </div>
     </section>
@@ -2171,14 +2166,6 @@ $('#cfgTest').addEventListener('click', async () => {
   } catch (e) {
     s.textContent = '✗ ' + e.message; s.className = 'status err';
   }
-});
-$('#cfgCleanup').addEventListener('click', async () => {
-  if (!confirm('將清除「廠商」分類中誤建的：Line禮物、蝦皮、Pinkoi、瑪黑、官網、酷澎、無，以及整個「包裹類型」分類。確定嗎？')) return;
-  try {
-    const r = await api('cleanupVendor');
-    toast(`已清除 ${r.removed} 筆`);
-    await loadAll();
-  } catch (e) { toast(e.message, true); }
 });
 
 /* ============ 啟動 ============ */
