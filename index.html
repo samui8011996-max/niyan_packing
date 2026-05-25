@@ -38,15 +38,15 @@
     --c-white:  #f6f0db;
     --c-gray:   #a8a195;
 
-    /* 深色歷史表 */
-    --dk-bg:      #1f2933;
-    --dk-bg-2:    #2a3744;
-    --dk-line:    #3a4a5a;
-    --dk-text:    #e5e2d6;
-    --dk-soft:    #9aa5b1;
-    --dk-accent:  #6fb3c4;
-    --dk-red:     #e07a6e;
-    --dk-green:   #8fc78b;
+ 
+    --dk-bg:      var(--paper);
+    --dk-bg-2:    var(--paper-2);
+    --dk-line:    var(--line);
+    --dk-text:    var(--ink);
+    --dk-soft:    var(--ink-soft);
+    --dk-accent:  var(--accent);
+    --dk-red:     var(--stamp-red);
+    --dk-green:   #5b8c5a;
   }
 
   html, body {
@@ -511,19 +511,23 @@
     background: linear-gradient(135deg, #f3ecd9 0%, #e8dfc4 100%);
     opacity: 0.85;
   }
-  .pf-card.done::after {
-    content: '✓ 完了';
-    position: absolute;
-    top: 8px; right: 12px;
-    color: var(--stamp-red);
-    font-family: 'Shippori Mincho', serif;
-    font-size: 16px;
-    transform: rotate(-8deg);
-    border: 1.5px solid var(--stamp-red);
-    padding: 0 6px;
-    border-radius: 3px;
-    opacity: 0.7;
-  }
+ .pf-card.done::after {
+  content: '完了';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  color: var(--stamp-red);
+  font-family: 'Shippori Mincho', serif;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  border: 4px solid var(--stamp-red);
+  padding: 4px 16px;
+  border-radius: 6px;
+  opacity: 0.25;
+  pointer-events: none;
+  white-space: nowrap;
+}
   .pf-platform {
     font-family: 'Shippori Mincho', serif;
     font-size: 18px; font-weight: 700;
