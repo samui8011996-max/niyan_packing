@@ -1164,7 +1164,10 @@ const LS_URL = 'shippingApiUrl_v2';
 const LS_COLORS = 'shippingColors_v1';
 
 const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
-
+const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六'];
+const DEFAULT_ITEMS   = ['胖胖貓','雙手貓','狗','瘦貓','消波塊','龍','一般熊','棒球熊','蟾蜍','山景名片座'];
+const DEFAULT_STYLES  = ['金運','招福','財','富'];
+const DEFAULT_SIZES   = ['巨','大','中','小'];
 // 顏色名 → 色碼預設
 const DEFAULT_COLOR_MAP = {
   '黃': '#f0d98a',
@@ -1503,16 +1506,18 @@ function fillSelect(sel, values, current) {
 }
 function renderSelects() {
   const s = state.settings || {};
-  fillSelect($('#f_vendor'), s['廠商']);
-  fillSelect($('#f_item'),   s['品項']);
-  fillSelect($('#f_style'),  s['款式']);
-  fillSelect($('#f_size'),   s['大小']);
+  const merge = (def, custom) => [...def, ...(custom||[]).filter(v => !def.includes(v))];
+  fillSelect($('#f_vendor'), merge(DEFAULT_VENDORS, s['廠商']));
+  fillSelect($('#f_item'),   merge(DEFAULT_ITEMS,   s['品項']));
+  fillSelect($('#f_style'),  merge(DEFAULT_STYLES,  s['款式']));
+  fillSelect($('#f_size'),   merge(DEFAULT_SIZES,   s['大小']));
 }
-
 /* ----- 顏色色塊 ----- */
 function renderColorGrid() {
   const grid = $('#colorGrid');
-  const colors = (state.settings && state.settings['顏色']) || [];
+ const DEFAULT_COLORS_LIST = ['黃','粉','綠','黑','白','灰'];
+const custom = (state.settings && state.settings['顏色']) || [];
+const colors = [...DEFAULT_COLORS_LIST, ...custom.filter(v => !DEFAULT_COLORS_LIST.includes(v))];
   let html = colors.map(c => `
     <div class="color-chip ${selectedColors.includes(c)?'on':''}" data-color="${escapeAttr(c)}">
       <span class="swatch" style="background:${colorOf(c)}"></span>
@@ -1835,7 +1840,10 @@ async function addOrderProgress() {
 
 function openOrderEdit(o) {
   const s = state.settings || {};
-  const opts = (arr, cur) => '<option value="">—</option>' + (arr||[]).map(v => `<option ${v===cur?'selected':''}>${escapeHtml(v)}</option>`).join('');
+ const merge = (def, custom) => [...def, ...(custom||[]).filter(v => !def.includes(v))];
+const opts = (arr, cur) => '<option value="">—</option>' + (arr||[]).map(v => `<option ${v===cur?'selected':''}>${escapeHtml(v)}</option>`).join('');
+
+// 然後把下面四個 select 的 s['廠商'] 等換成 merge 後的：
   const colors = String(o['顏色']||'').split(/[、,，]/).map(c=>c.trim()).filter(Boolean);
 
   $('#omTitle').textContent = '編 輯 訂 單';
@@ -1843,10 +1851,10 @@ function openOrderEdit(o) {
     <div class="form-grid">
       <div class="field"><label>下單日</label><input type="date" id="e_date" value="${fmtDate(o['下單日期'])}"></div>
       <div class="field"><label>交期</label><input type="date" id="e_due" value="${fmtDate(o['交期'])}"></div>
-      <div class="field"><label>廠商</label><select id="e_vendor">${opts(s['廠商'], o['廠商'])}</select></div>
-      <div class="field"><label>品項</label><select id="e_item">${opts(s['品項'], o['品項'])}</select></div>
-      <div class="field"><label>款式</label><select id="e_style">${opts(s['款式'], o['款式'])}</select></div>
-      <div class="field"><label>大小</label><select id="e_size">${opts(s['大小'], o['大小'])}</select></div>
+     <div class="field"><label>廠商</label><select id="e_vendor">${opts(merge(DEFAULT_VENDORS, s['廠商']), o['廠商'])}</select></div>
+<div class="field"><label>品項</label><select id="e_item">${opts(merge(DEFAULT_ITEMS,   s['品項']), o['品項'])}</select></div>
+<div class="field"><label>款式</label><select id="e_style">${opts(merge(DEFAULT_STYLES,  s['款式']), o['款式'])}</select></div>
+<div class="field"><label>大小</label><select id="e_size">${opts(merge(DEFAULT_SIZES,   s['大小']), o['大小'])}</select></div>
       <div class="field full"><label>顏色</label>
         <div class="color-grid" id="e_colors"></div>
       </div>
@@ -1862,7 +1870,9 @@ function openOrderEdit(o) {
   // 顏色多選
   let eSelected = colors.slice();
   const eGrid = $('#e_colors');
-  const colorOpts = s['顏色'] || [];
+ const DEFAULT_COLORS_LIST = ['黃','粉','綠','黑','白','灰'];
+const customC = s['顏色'] || [];
+const colorOpts = [...DEFAULT_COLORS_LIST, ...customC.filter(v => !DEFAULT_COLORS_LIST.includes(v))];
   eGrid.innerHTML = colorOpts.map(c => `
     <div class="color-chip ${eSelected.includes(c)?'on':''}" data-color="${escapeAttr(c)}">
       <span class="swatch" style="background:${colorOf(c)}"></span>${escapeHtml(c)}
