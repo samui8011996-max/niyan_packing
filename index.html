@@ -31,7 +31,6 @@
     --stamp-red: #c8554a;
     --stamp-blue: #4a6f8a;
 
-    /* 顏色標示 */
     --c-yellow: #f0d98a;
     --c-pink:   #f4b8c8;
     --c-green:  #a8c894;
@@ -106,7 +105,6 @@
     padding-left: 6px;
   }
 
-  /* 主體 */
   .main { padding: 20px 20px 0; }
 
   /* ============ 分頁 ============ */
@@ -459,7 +457,6 @@
     border-color: var(--accent);
     color: var(--ink);
   }
-
 
   .pf-grid {
     display: grid;
@@ -875,8 +872,6 @@
 
     <!-- 公告 -->
     <section class="section active" id="sec-board">
-
-      <!-- 上區：今日平台單 -->
       <div class="card">
         <span class="tape t-cream">today ✦ 今 日 平 台 單</span>
         <div class="card-title">
@@ -887,7 +882,6 @@
         <div class="pf-grid" id="pfList"></div>
       </div>
 
-      <!-- 下區：廠商訂單 -->
       <div class="card">
         <span class="tape">vendor ✦ 廠 商 訂 購 單</span>
         <div class="card-title">
@@ -1159,16 +1153,18 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ============ 設定 ============ */
-const LS_URL = 'shippingApiUrl_v2';
+/* ============ 常數 ============ */
+const LS_URL    = 'shippingApiUrl_v2';
 const LS_COLORS = 'shippingColors_v1';
 
 const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
+
 const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六'];
 const DEFAULT_ITEMS   = ['胖胖貓','雙手貓','狗','瘦貓','消波塊','龍','一般熊','棒球熊','蟾蜍','山景名片座'];
 const DEFAULT_STYLES  = ['金運','招福','財','富'];
 const DEFAULT_SIZES   = ['巨','大','中','小'];
-// 顏色名 → 色碼預設
+const DEFAULT_COLORS  = ['黃','粉','綠','黑','白','灰'];
+
 const DEFAULT_COLOR_MAP = {
   '黃': '#f0d98a',
   '粉': '#f4b8c8',
@@ -1178,7 +1174,6 @@ const DEFAULT_COLOR_MAP = {
   '灰': '#a8a195'
 };
 
-// 平台 → 可用物流
 const PLATFORM_LOGISTICS = {
   'Line禮物': ['黑貓'],
   '蝦皮':     ['超商','蝦皮隔日','蝦皮一般','蝦皮黑貓'],
@@ -1186,29 +1181,27 @@ const PLATFORM_LOGISTICS = {
   '瑪黑':     ['黑貓'],
   '官網':     ['黑貓','超商'],
   '博客來':   ['黑貓'],
-  '酷澎':     []  // 無物流選項，只統計件數
+  '酷澎':     []
 };
 
-let API_URL = localStorage.getItem(LS_URL) || '';
+/* ============ 工具函式 ============ */
+function mergeList(defaults, custom) {
+  return [...defaults, ...(custom || []).filter(v => !defaults.includes(v))];
+}
+
+let API_URL  = localStorage.getItem(LS_URL) || '';
 let colorMap = Object.assign({}, DEFAULT_COLOR_MAP);
 try {
   const stored = JSON.parse(localStorage.getItem(LS_COLORS) || '{}');
   colorMap = Object.assign(colorMap, stored);
 } catch(_) {}
 
-let state = {
-  orders: [],
-  progress: [],
-  platforms: [],
-  settings: {},
-  mfg: []
-};
-let selectedColors = []; // 多選顏色（廠商單）
+let state = { orders: [], progress: [], platforms: [], settings: {}, mfg: [] };
+let selectedColors = [];
 let vendorFilter = 'all';
-let vendorDate = '';
-let pollTimer = null;
+let vendorDate   = '';
+let pollTimer    = null;
 
-/* ============ 工具 ============ */
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
@@ -1234,6 +1227,7 @@ function escapeHtml(s) {
 }
 function escapeAttr(s) { return escapeHtml(s); }
 function colorOf(name) { return colorMap[name] || '#cccccc'; }
+function cssEscape(s)  { return String(s).replace(/"/g,'\\"'); }
 
 /* ============ API ============ */
 async function api(action, payload = {}) {
@@ -1293,7 +1287,6 @@ function renderPlatformBoard() {
   const today = todayStr();
   const PLATFORMS = ['Line禮物','蝦皮','Pinkoi','瑪黑','官網','博客來','酷澎'];
 
-  // 找今日每個平台的最新一筆
   const todayItems = state.platforms.filter(p => fmtDate(p['日期']) === today);
   const byPlatform = {};
   todayItems.forEach(p => { byPlatform[p['平台']] = p; });
@@ -1324,9 +1317,7 @@ function renderPlatformBoard() {
     }
     return `
       <div class="pf-card ${rec['已完成']==='TRUE' ? 'done' : ''}" data-id="${rec.id}">
-        <div class="pf-platform">
-          <span>${name}</span>
-        </div>
+        <div class="pf-platform"><span>${name}</span></div>
         <div class="pf-total"><span class="label">總</span>${rec['總件數']||0}</div>
         <div class="pf-details">${detailHtml}</div>
         ${rec['備註'] ? `<div style="font-size:12px;color:var(--ink-soft);font-style:italic;border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">${escapeHtml(rec['備註'])}</div>` : ''}
@@ -1340,7 +1331,6 @@ function renderPlatformBoard() {
     `;
   }).join('');
 
-  // 綁定動作
   list.querySelectorAll('.pf-card').forEach(card => {
     const id = card.dataset.id;
     if (!id) return;
@@ -1397,21 +1387,20 @@ function renderVendorBoard() {
   }
 
   list.innerHTML = orders.map(o => {
-    const qty = Number(o['數量']) || 0;
+    const qty  = Number(o['數量']) || 0;
     const done = doneOf(o.id);
-    const isDone = qty > 0 && done >= qty;
+    const isDone   = qty > 0 && done >= qty;
     const isUrgent = o['交期'] && o['交期'] === todayStr();
-    const pct = qty > 0 ? Math.min(100, done/qty*100) : 0;
+    const pct  = qty > 0 ? Math.min(100, done/qty*100) : 0;
 
-    // 顏色（可能多個，以「、」分隔）
     const colors = String(o['顏色']||'').split(/[、,，]/).map(c => c.trim()).filter(Boolean);
     const colorHtml = colors.map(c => `
       <span class="color-tag"><span class="swatch" style="background:${colorOf(c)}"></span>${escapeHtml(c)}</span>
     `).join('');
     const specs = [];
-    if (o['款式']) specs.push(`<span>${escapeHtml(o['款式'])}</span>`);
-    if (colorHtml) specs.push(colorHtml);
-    if (o['大小']) specs.push(`<span>${escapeHtml(o['大小'])}</span>`);
+    if (o['款式'])   specs.push(`<span>${escapeHtml(o['款式'])}</span>`);
+    if (colorHtml)   specs.push(colorHtml);
+    if (o['大小'])   specs.push(`<span>${escapeHtml(o['大小'])}</span>`);
 
     return `
       <div class="vendor-card ${isDone?'done':''} ${isUrgent?'urgent':''}" data-id="${o.id}">
@@ -1467,12 +1456,12 @@ function renderMfg() {
 function renderHistory() {
   const list = $('#hisList');
   const date = $('#hisDate').value;
-  const pf = $('#hisPlatform').value;
-  let items = state.platforms.slice();
+  const pf   = $('#hisPlatform').value;
+  let items  = state.platforms.slice();
   if (date) items = items.filter(p => fmtDate(p['日期']) === date);
   if (pf)   items = items.filter(p => p['平台'] === pf);
   items.sort((a,b) => {
-    const da = a['日期']||''; const db = b['日期']||'';
+    const da = a['日期']||'', db = b['日期']||'';
     if (da !== db) return da < db ? 1 : -1;
     return (a['平台']||'').localeCompare(b['平台']||'');
   });
@@ -1504,20 +1493,20 @@ function fillSelect(sel, values, current) {
   sel.innerHTML = '<option value="">—</option>' +
     (values||[]).map(v => `<option ${v===cur?'selected':''}>${escapeHtml(v)}</option>`).join('');
 }
+
 function renderSelects() {
   const s = state.settings || {};
-  const merge = (def, custom) => [...def, ...(custom||[]).filter(v => !def.includes(v))];
-  fillSelect($('#f_vendor'), merge(DEFAULT_VENDORS, s['廠商']));
-  fillSelect($('#f_item'),   merge(DEFAULT_ITEMS,   s['品項']));
-  fillSelect($('#f_style'),  merge(DEFAULT_STYLES,  s['款式']));
-  fillSelect($('#f_size'),   merge(DEFAULT_SIZES,   s['大小']));
+  fillSelect($('#f_vendor'), mergeList(DEFAULT_VENDORS, s['廠商']));
+  fillSelect($('#f_item'),   mergeList(DEFAULT_ITEMS,   s['品項']));
+  fillSelect($('#f_style'),  mergeList(DEFAULT_STYLES,  s['款式']));
+  fillSelect($('#f_size'),   mergeList(DEFAULT_SIZES,   s['大小']));
 }
+
 /* ----- 顏色色塊 ----- */
 function renderColorGrid() {
-  const grid = $('#colorGrid');
- const DEFAULT_COLORS_LIST = ['黃','粉','綠','黑','白','灰'];
-const custom = (state.settings && state.settings['顏色']) || [];
-const colors = [...DEFAULT_COLORS_LIST, ...custom.filter(v => !DEFAULT_COLORS_LIST.includes(v))];
+  const grid   = $('#colorGrid');
+  const colors = mergeList(DEFAULT_COLORS, (state.settings || {})['顏色']);
+
   let html = colors.map(c => `
     <div class="color-chip ${selectedColors.includes(c)?'on':''}" data-color="${escapeAttr(c)}">
       <span class="swatch" style="background:${colorOf(c)}"></span>
@@ -1529,7 +1518,7 @@ const colors = [...DEFAULT_COLORS_LIST, ...custom.filter(v => !DEFAULT_COLORS_LI
 
   grid.querySelectorAll('.color-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      const c = chip.dataset.color;
+      const c   = chip.dataset.color;
       const idx = selectedColors.indexOf(c);
       if (idx >= 0) selectedColors.splice(idx, 1);
       else selectedColors.push(c);
@@ -1544,13 +1533,10 @@ $$('.chip').forEach(chip => {
   chip.addEventListener('click', () => {
     const key = chip.dataset.pack;
     chip.classList.toggle('on');
-    // 紙盒/裸裝互斥
     if (key === 'box' && chip.classList.contains('on')) {
-      const bare = document.querySelector('.chip[data-pack="bare"]');
-      if (bare) bare.classList.remove('on');
+      document.querySelector('.chip[data-pack="bare"]')?.classList.remove('on');
     } else if (key === 'bare' && chip.classList.contains('on')) {
-      const box = document.querySelector('.chip[data-pack="box"]');
-      if (box) box.classList.remove('on');
+      document.querySelector('.chip[data-pack="box"]')?.classList.remove('on');
     }
     const detail = document.getElementById('pack-' + key);
     if (detail) detail.classList.toggle('show', chip.classList.contains('on'));
@@ -1560,9 +1546,8 @@ $$('.chip').forEach(chip => {
 /* ============ 數量按鈕 ============ */
 $$('.qty-btn[data-add]').forEach(b => {
   b.addEventListener('click', () => {
-    const add = Number(b.dataset.add);
     const inp = $('#f_qty');
-    inp.value = (Number(inp.value) || 0) + add;
+    inp.value = (Number(inp.value) || 0) + Number(b.dataset.add);
   });
 });
 $('#qtyClear').addEventListener('click', () => { $('#f_qty').value = ''; });
@@ -1588,14 +1573,13 @@ $('#amSave').addEventListener('click', async () => {
     await api('addSetting', { '類別': addCategory, '值': val });
     if (!state.settings[addCategory]) state.settings[addCategory] = [];
     if (state.settings[addCategory].indexOf(val) < 0) state.settings[addCategory].push(val);
-    // 若是顏色，存色碼到 localStorage
     if (addCategory === '顏色') {
       colorMap[val] = $('#amColor').value;
       localStorage.setItem(LS_COLORS, JSON.stringify(colorMap));
     }
     renderSelects();
     renderColorGrid();
-    const map = { '廠商':'#f_vendor','品項':'#f_item','款式':'#f_style','大小':'#f_size' };
+    const map = { '廠商':'#f_vendor', '品項':'#f_item', '款式':'#f_style', '大小':'#f_size' };
     const sel = map[addCategory];
     if (sel) $(sel).value = val;
     $('#addModal').classList.remove('show');
@@ -1628,23 +1612,25 @@ function getAdditionalText() {
 
 function resetVendorForm() {
   $('#f_date').value = todayStr();
-  $('#f_due').value = '';
+  $('#f_due').value  = '';
   ['#f_vendor','#f_item','#f_style','#f_size','#f_qty','#f_note'].forEach(s => $(s).value = '');
   selectedColors = [];
   $$('#colorGrid .color-chip').forEach(c => c.classList.remove('on'));
   $$('.chip').forEach(c => c.classList.remove('on'));
   $$('.pack-detail').forEach(d => d.classList.remove('show'));
-  $('#oil-size').value = '';
+  $('#oil-size').value  = '';
   $('#oil-flavor').value = '';
-  $('#seal-type').value = '';
-  $('#card-type').value = '';
+  $('#seal-type').value  = '';
+  $('#card-type').value  = '';
 }
 
 async function submitVendor() {
   if (!API_URL) { toast('請先設定 API 網址', true); return; }
   if (!$('#f_date').value) { toast('請選日期', true); return; }
   const btn = $('#btnSubmit');
-  btn.disabled = true; const o = btn.textContent; btn.textContent = '送 出 中…';
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '送 出 中…';
   try {
     await api('addOrder', {
       '下單日期': $('#f_date').value,
@@ -1663,12 +1649,12 @@ async function submitVendor() {
     await loadAll();
     switchTab('board');
   } catch (e) { toast(e.message, true); }
-  finally { btn.disabled = false; btn.textContent = o; }
+  finally { btn.disabled = false; btn.textContent = orig; }
 }
 $('#btnSubmit').addEventListener('click', submitVendor);
 $('#btnReset').addEventListener('click', resetVendorForm);
 
-/* ============ 廠商單：開啟 Modal ============ */
+/* ============ 廠商單：Modal ============ */
 let currentOrder = null;
 function openOrderModal(id) {
   const o = state.orders.find(x => x.id === id);
@@ -1680,18 +1666,18 @@ function openOrderModal(id) {
 function closeOrderModal() { $('#orderModal').classList.remove('show'); currentOrder = null; }
 
 function renderOrderModal() {
-  const o = currentOrder;
-  const qty = Number(o['數量']) || 0;
-  const done = doneOf(o.id);
+  const o         = currentOrder;
+  const qty       = Number(o['數量']) || 0;
+  const done      = doneOf(o.id);
   const remaining = Math.max(0, qty - done);
-  const isDone = qty > 0 && done >= qty;
-  const progress = progressOf(o.id);
+  const isDone    = qty > 0 && done >= qty;
+  const progress  = progressOf(o.id);
 
   $('#omTitle').textContent = `${o['品項']||'訂單'} ${qty>0?`(${done}/${qty})`:''}`;
 
-  const colors = String(o['顏色']||'').split(/[、,，]/).map(c=>c.trim()).filter(Boolean);
+  const colors    = String(o['顏色']||'').split(/[、,，]/).map(c=>c.trim()).filter(Boolean);
   const colorHtml = colors.map(c => `<span style="display:inline-flex;align-items:center;gap:3px;margin-right:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colorOf(c)};border:1px solid rgba(0,0,0,.15);"></span>${escapeHtml(c)}</span>`).join('');
-  const meta = [
+  const meta      = [
     o['廠商'] ? `廠商：${escapeHtml(o['廠商'])}` : '',
     `下單：${fmtDate(o['下單日期'])}`,
     o['交期'] ? `交期：${fmtDate(o['交期'])}` : ''
@@ -1713,12 +1699,10 @@ function renderOrderModal() {
     html += `
       <div style="margin: 10px 0 14px;">
         <div style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;letter-spacing:1px;">包貨人員填寫</div>
-
         <div class="qty-check-row" id="qChk" style="${isDone?'opacity:.5;pointer-events:none;':''}">
           <input type="checkbox" id="checkAll">
           <label for="checkAll">一鍵完成剩餘 <b style="font-size:16px;">${remaining}</b> 個</label>
         </div>
-
         <div style="${isDone?'opacity:.5;pointer-events:none;':''}">
           <div class="form-grid" style="margin-bottom: 10px;">
             <div class="field">
@@ -1761,9 +1745,9 @@ function renderOrderModal() {
       <div style="font-size:12px;color:var(--ink-soft);margin-bottom:6px;letter-spacing:2px;">完成紀錄</div>`;
     progress.forEach(p => {
       const metaPieces = [];
-      if (p['總箱數']) metaPieces.push('箱數：'+p['總箱數']);
+      if (p['總箱數'])   metaPieces.push('箱數：'+p['總箱數']);
       if (p['物流公司']) metaPieces.push('物流：'+p['物流公司']);
-      if (p['備註']) metaPieces.push(p['備註']);
+      if (p['備註'])     metaPieces.push(p['備註']);
       html += `
         <div class="progress-entry">
           <span class="who">${escapeHtml(p['包貨人員']||'—')}</span>
@@ -1779,19 +1763,17 @@ function renderOrderModal() {
   html += `
     <div class="btn-row">
       <button class="btn small danger" id="orderDel">刪除訂單</button>
-      <button class="btn small ghost" id="orderEdit">編輯</button>
+      <button class="btn small ghost"  id="orderEdit">編輯</button>
     </div>
   `;
   $('#omBody').innerHTML = html;
 
-  // 綁定
   const chk = $('#checkAll'), pQty = $('#pQty');
   if (chk && pQty) {
     chk.addEventListener('change', () => { pQty.value = chk.checked ? remaining : ''; });
     pQty.addEventListener('input', () => { chk.checked = (Number(pQty.value) >= remaining && remaining > 0); });
   }
-  const pSave = $('#pSave');
-  if (pSave) pSave.addEventListener('click', addOrderProgress);
+  $('#pSave')?.addEventListener('click', addOrderProgress);
 
   $('#omBody').querySelectorAll('.del-btn').forEach(b => {
     b.addEventListener('click', async () => {
@@ -1818,17 +1800,17 @@ function renderOrderModal() {
 
 async function addOrderProgress() {
   const o = currentOrder; if (!o) return;
-  const qty = Number($('#pQty').value);
-  if (!qty || qty <= 0) { toast('請輸入數量', true); return; }
+  const qty   = Number($('#pQty').value);
   const staff = $('#pStaff').value;
-  if (!staff) { toast('請選包貨人員', true); return; }
+  if (!qty || qty <= 0) { toast('請輸入數量', true); return; }
+  if (!staff)            { toast('請選包貨人員', true); return; }
   try {
     await api('addProgress', {
-      '訂單id': o.id,
+      '訂單id':   o.id,
       '完成日期': $('#pDate').value || todayStr(),
       '完成數量': qty,
-      '總箱數': $('#pBoxes').value || '',
-      '物流公司': $('#pLogi').value || '',
+      '總箱數':   $('#pBoxes').value || '',
+      '物流公司': $('#pLogi').value  || '',
       '包貨人員': staff
     });
     await loadAll();
@@ -1839,11 +1821,11 @@ async function addOrderProgress() {
 }
 
 function openOrderEdit(o) {
-  const s = state.settings || {};
- const merge = (def, custom) => [...def, ...(custom||[]).filter(v => !def.includes(v))];
-const opts = (arr, cur) => '<option value="">—</option>' + (arr||[]).map(v => `<option ${v===cur?'selected':''}>${escapeHtml(v)}</option>`).join('');
+  const s    = state.settings || {};
+  const opts = (arr, cur) =>
+    '<option value="">—</option>' +
+    arr.map(v => `<option ${v===cur?'selected':''}>${escapeHtml(v)}</option>`).join('');
 
-// 然後把下面四個 select 的 s['廠商'] 等換成 merge 後的：
   const colors = String(o['顏色']||'').split(/[、,，]/).map(c=>c.trim()).filter(Boolean);
 
   $('#omTitle').textContent = '編 輯 訂 單';
@@ -1851,10 +1833,10 @@ const opts = (arr, cur) => '<option value="">—</option>' + (arr||[]).map(v => 
     <div class="form-grid">
       <div class="field"><label>下單日</label><input type="date" id="e_date" value="${fmtDate(o['下單日期'])}"></div>
       <div class="field"><label>交期</label><input type="date" id="e_due" value="${fmtDate(o['交期'])}"></div>
-     <div class="field"><label>廠商</label><select id="e_vendor">${opts(merge(DEFAULT_VENDORS, s['廠商']), o['廠商'])}</select></div>
-<div class="field"><label>品項</label><select id="e_item">${opts(merge(DEFAULT_ITEMS,   s['品項']), o['品項'])}</select></div>
-<div class="field"><label>款式</label><select id="e_style">${opts(merge(DEFAULT_STYLES,  s['款式']), o['款式'])}</select></div>
-<div class="field"><label>大小</label><select id="e_size">${opts(merge(DEFAULT_SIZES,   s['大小']), o['大小'])}</select></div>
+      <div class="field"><label>廠商</label><select id="e_vendor">${opts(mergeList(DEFAULT_VENDORS, s['廠商']), o['廠商'])}</select></div>
+      <div class="field"><label>品項</label><select id="e_item">${opts(mergeList(DEFAULT_ITEMS,   s['品項']), o['品項'])}</select></div>
+      <div class="field"><label>款式</label><select id="e_style">${opts(mergeList(DEFAULT_STYLES,  s['款式']), o['款式'])}</select></div>
+      <div class="field"><label>大小</label><select id="e_size">${opts(mergeList(DEFAULT_SIZES,   s['大小']), o['大小'])}</select></div>
       <div class="field full"><label>顏色</label>
         <div class="color-grid" id="e_colors"></div>
       </div>
@@ -1863,16 +1845,15 @@ const opts = (arr, cur) => '<option value="">—</option>' + (arr||[]).map(v => 
       <div class="field full"><label>備註</label><textarea id="e_note">${escapeHtml(o['備註']||'')}</textarea></div>
     </div>
     <div class="btn-row">
-      <button class="btn small ghost" id="eBack">返回</button>
+      <button class="btn small ghost"   id="eBack">返回</button>
       <button class="btn small primary" id="eSave">儲 存</button>
     </div>
   `;
-  // 顏色多選
+
   let eSelected = colors.slice();
-  const eGrid = $('#e_colors');
- const DEFAULT_COLORS_LIST = ['黃','粉','綠','黑','白','灰'];
-const customC = s['顏色'] || [];
-const colorOpts = [...DEFAULT_COLORS_LIST, ...customC.filter(v => !DEFAULT_COLORS_LIST.includes(v))];
+  const eGrid   = $('#e_colors');
+  const colorOpts = mergeList(DEFAULT_COLORS, s['顏色']);
+
   eGrid.innerHTML = colorOpts.map(c => `
     <div class="color-chip ${eSelected.includes(c)?'on':''}" data-color="${escapeAttr(c)}">
       <span class="swatch" style="background:${colorOf(c)}"></span>${escapeHtml(c)}
@@ -1880,7 +1861,7 @@ const colorOpts = [...DEFAULT_COLORS_LIST, ...customC.filter(v => !DEFAULT_COLOR
   `).join('');
   eGrid.querySelectorAll('.color-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      const c = chip.dataset.color;
+      const c   = chip.dataset.color;
       const idx = eSelected.indexOf(c);
       if (idx >= 0) eSelected.splice(idx,1); else eSelected.push(c);
       chip.classList.toggle('on');
@@ -1891,7 +1872,7 @@ const colorOpts = [...DEFAULT_COLORS_LIST, ...customC.filter(v => !DEFAULT_COLOR
   $('#eSave').addEventListener('click', async () => {
     try {
       await api('updateOrder', {
-        id: o.id,
+        id:       o.id,
         '下單日期': $('#e_date').value,
         '交期':    $('#e_due').value,
         '廠商':    $('#e_vendor').value,
@@ -1911,21 +1892,21 @@ const colorOpts = [...DEFAULT_COLORS_LIST, ...customC.filter(v => !DEFAULT_COLOR
   });
 }
 
-/* ============ 平台單表單（合併） ============ */
+/* ============ 平台單表單 ============ */
 const PLATFORM_ORDER = ['Line禮物','蝦皮','Pinkoi','瑪黑','官網','博客來','酷澎'];
 
 function renderPlatformForm() {
-  const area = $('#p_all_platforms');
-  const date = $('#p_date').value || todayStr();
+  const area      = $('#p_all_platforms');
+  const date      = $('#p_date').value || todayStr();
   const todayRecs = {};
   state.platforms.filter(p => fmtDate(p['日期']) === date).forEach(p => {
     todayRecs[p['平台']] = p;
   });
 
   area.innerHTML = '<div class="pf-form">' + PLATFORM_ORDER.map(name => {
-    const opts = PLATFORM_LOGISTICS[name] || [];
+    const opts     = PLATFORM_LOGISTICS[name] || [];
     const existing = todayRecs[name];
-    const map = {};
+    const map      = {};
     if (existing && Array.isArray(existing['明細'])) {
       existing['明細'].forEach(d => { map[d.物流] = d.件數 || 0; });
     }
@@ -1933,7 +1914,6 @@ function renderPlatformForm() {
 
     let inputs = '';
     if (!opts.length) {
-      // 酷澎
       inputs = `
         <div class="field">
           <label>總件數</label>
@@ -1963,7 +1943,6 @@ function renderPlatformForm() {
     `;
   }).join('') + '</div>';
 
-  // 綁定即時加總
   area.querySelectorAll('.pf-input').forEach(inp => {
     inp.addEventListener('input', () => updatePfSum(inp.dataset.pf));
   });
@@ -1975,18 +1954,14 @@ function updatePfSum(name) {
   document.querySelectorAll(`.pf-input[data-pf="${cssEscape(name)}"]`).forEach(inp => {
     sum += Number(inp.value) || 0;
   });
-  const el = document.querySelector(`[data-sum="${cssEscape(name)}"]`);
+  const el   = document.querySelector(`[data-sum="${cssEscape(name)}"]`);
   if (el) el.textContent = sum;
   const card = document.querySelector(`.pf-form-card[data-platform="${cssEscape(name)}"]`);
   if (card) card.classList.toggle('has-data', sum > 0);
 }
 
-function cssEscape(s) {
-  return String(s).replace(/"/g,'\\"');
-}
-
 function resetPlatformForm() {
-  $('#p_date').value = todayStr();
+  $('#p_date').value        = todayStr();
   $('#p_global_note').value = '';
   renderPlatformForm();
 }
@@ -1997,11 +1972,10 @@ $('#pReset').addEventListener('click', resetPlatformForm);
 $('#pSubmit').addEventListener('click', async () => {
   if (!API_URL) { toast('請先設定 API 網址', true); return; }
   const date = $('#p_date').value;
-  if (!date) { toast('請選日期', true); return; }
+  if (!date)  { toast('請選日期', true); return; }
   const globalNote = $('#p_global_note').value;
+  const items = [];
 
-  // 收集所有平台資料
-  const items = []; // 要送的資料
   PLATFORM_ORDER.forEach(name => {
     const opts = PLATFORM_LOGISTICS[name] || [];
     let detail = [], total = 0;
@@ -2016,9 +1990,7 @@ $('#pSubmit').addEventListener('click', async () => {
       });
     }
     const noteInp = document.querySelector(`.pf-note-input[data-pf="${cssEscape(name)}"]`);
-    const note = noteInp ? noteInp.value.trim() : '';
-
-    // 只送有資料或有備註的（避免空白送一堆 0）
+    const note    = noteInp ? noteInp.value.trim() : '';
     if (total > 0 || note) {
       items.push({ 平台: name, 明細: detail, 總件數: total, 備註: note });
     }
@@ -2026,33 +1998,21 @@ $('#pSubmit').addEventListener('click', async () => {
 
   if (!items.length) { toast('沒有任何資料可送出', true); return; }
 
-  const btn = $('#pSubmit');
+  const btn  = $('#pSubmit');
   btn.disabled = true;
   const orig = btn.textContent;
   btn.textContent = '送 出 中…';
 
   try {
-    // 對每個平台：若當日已有則更新、否則新增
     let added = 0, updated = 0;
     for (const item of items) {
       const exist = state.platforms.find(p => fmtDate(p['日期']) === date && p['平台'] === item.平台);
-      const note = item.備註 || globalNote;
+      const note  = item.備註 || globalNote;
       if (exist) {
-        await api('updatePlatform', {
-          id: exist.id,
-          '明細': item.明細,
-          '總件數': item.總件數,
-          '備註': note
-        });
+        await api('updatePlatform', { id: exist.id, '明細': item.明細, '總件數': item.總件數, '備註': note });
         updated++;
       } else {
-        await api('addPlatform', {
-          '日期': date,
-          '平台': item.平台,
-          '明細': item.明細,
-          '總件數': item.總件數,
-          '備註': note
-        });
+        await api('addPlatform', { '日期': date, '平台': item.平台, '明細': item.明細, '總件數': item.總件數, '備註': note });
         added++;
       }
     }
@@ -2063,7 +2023,7 @@ $('#pSubmit').addEventListener('click', async () => {
   } catch (e) {
     toast(e.message, true);
   } finally {
-    btn.disabled = false;
+    btn.disabled    = false;
     btn.textContent = orig;
   }
 });
@@ -2072,7 +2032,7 @@ $('#pSubmit').addEventListener('click', async () => {
 function openPlatformEdit(rec) {
   $('#pfmTitle').textContent = '編 輯 ' + rec['平台'];
   const options = PLATFORM_LOGISTICS[rec['平台']] || [];
-  const map = {};
+  const map     = {};
   (rec['明細']||[]).forEach(d => { map[d.物流] = d.件數 || 0; });
 
   let detailHtml = '';
@@ -2092,7 +2052,7 @@ function openPlatformEdit(rec) {
     <div class="field" style="margin-top:12px;"><label>備註</label><textarea id="ef_note">${escapeHtml(rec['備註']||'')}</textarea></div>
     <div class="btn-row">
       <button class="btn small danger" id="efDel">刪除</button>
-      <button class="btn small ghost" data-close>取消</button>
+      <button class="btn small ghost"  data-close>取消</button>
       <button class="btn small primary" id="efSave">儲存</button>
     </div>
   `;
@@ -2116,6 +2076,7 @@ function openPlatformEdit(rec) {
       toast('已儲存');
     } catch (e) { toast(e.message, true); }
   });
+
   $('#efDel').addEventListener('click', async () => {
     if (!confirm('確定刪除？')) return;
     try {
@@ -2142,11 +2103,11 @@ $('#vendorFilter').addEventListener('click', e => {
   renderVendorBoard();
 });
 $('#vendorDate').addEventListener('change', e => { vendorDate = e.target.value; renderVendorBoard(); });
-$('#vendorClearDate').addEventListener('click', () => { vendorDate=''; $('#vendorDate').value=''; renderVendorBoard(); });
+$('#vendorClearDate').addEventListener('click', () => { vendorDate = ''; $('#vendorDate').value = ''; renderVendorBoard(); });
 
 $('#hisDate').addEventListener('change', renderHistory);
 $('#hisPlatform').addEventListener('change', renderHistory);
-$('#hisClearDate').addEventListener('click', () => { $('#hisDate').value=''; renderHistory(); });
+$('#hisClearDate').addEventListener('click', () => { $('#hisDate').value = ''; renderHistory(); });
 
 /* ============ Modal 關閉 ============ */
 document.addEventListener('click', e => {
