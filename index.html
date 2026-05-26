@@ -500,14 +500,15 @@ html, body {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 14px;
   }
-  .pf-card {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 14px 14px 12px;
-    position: relative;
-    transition: all 0.15s;
-  }
+.pf-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 14px 12px;
+  position: relative;
+  transition: all 0.15s;
+  cursor: pointer;
+}
 .pf-card.done {
   background: var(--paper-2);
   opacity: 0.75;
@@ -1688,12 +1689,11 @@ function renderPlatformBoard() {
           <div class="pf-total"><span class="label">總</span>${rec['總件數']||0}</div>
           <div class="pf-details">${detailHtml}</div>
          ${note ? `<div style="font-family:'Noto Sans TC','Klee One',serif;font-size:12px;color:var(--stamp-red);border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
-          <div class="pf-actions">
-          ${isDone(rec['已完成'])
+        <div class="pf-actions">
+${isDone(rec['已完成'])
   ? `<button class="btn small ghost" data-act="undone">取消完成</button>`
   : `<button class="btn small primary" data-act="done">已完成 ✓</button>`}
-            <button class="btn small" data-act="edit">編輯</button>
-          </div>
+</div>
         </div>
       `;
     }).join('');
@@ -1721,9 +1721,17 @@ function renderPlatformBoard() {
       renderPlatformBoard();
     });
   });
-  list.querySelectorAll('.pf-card').forEach(card => {
+list.querySelectorAll('.pf-card').forEach(card => {
     const id = card.dataset.id;
     if (!id) return;
+
+    // 點卡片本身 → 編輯
+    card.addEventListener('click', () => {
+      const rec = state.platforms.find(x => x.id === id);
+      if (rec) openPlatformEdit(rec);
+    });
+
+    // 卡片內按鈕（已完成/取消完成）→ 阻止冒泡，不要觸發編輯
     card.querySelectorAll('[data-act]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -1735,10 +1743,6 @@ function renderPlatformBoard() {
           } else if (act === 'undone') {
             await api('updatePlatform', { id, '已完成': false, '完成日期': '' });
             toast('已取消完成');
-          } else if (act === 'edit') {
-            const rec = state.platforms.find(x => x.id === id);
-            if (rec) openPlatformEdit(rec);
-            return;
           }
           await loadAll();
         } catch (err) { toast(err.message, true); }
