@@ -1687,7 +1687,7 @@ function renderPlatformBoard() {
           <div class="pf-platform"><span>${name}</span></div>
           <div class="pf-total"><span class="label">總</span>${rec['總件數']||0}</div>
           <div class="pf-details">${detailHtml}</div>
-          ${note ? `<div style="font-size:12px;color:var(--stamp-red);font-style:italic;border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
+          ${note ? `<div style="font-size:12px;color:var(--stamp-red);border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
           <div class="pf-actions">
           ${isDone(rec['已完成'])
   ? `<button class="btn small ghost" data-act="undone">取消完成</button>`
