@@ -1561,7 +1561,7 @@ function safeText(v) {
   // 過濾 #ERROR! 之類的試算表錯誤值
   if (v == null) return '';
   const s = String(v).trim();
-  if (!s || s === '#ERROR!' || s === '#N/A' || s === '#VALUE!' || s === '#REF!' || s === '#NAME?') return '';
+  if (!s || s.startsWith('#')) return '';
   return s;
 }
 function isDone(v) {
