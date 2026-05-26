@@ -1439,19 +1439,21 @@ z-index: 10;
 
 <!-- ===== Modal: 新增選項 ===== -->
 <div class="modal-bg" id="addModal">
-  <div class="modal" style="max-width: 380px;">
+  <div class="modal" style="max-width: 420px;">
     <button class="modal-close" data-close>×</button>
-    <h2 id="amTitle">新 增</h2>
-    <div style="padding: 10px 0;">
+    <h2 id="amTitle">管 理</h2>
+    <div id="amExistingList" style="max-height:220px;overflow-y:auto;margin-bottom:12px;padding-right:4px;"></div>
+    <div style="border-top:1px dashed var(--line);padding-top:12px;">
+      <div style="font-size:12px;color:var(--ink-soft);letter-spacing:1px;margin-bottom:6px;">新增項目</div>
       <input type="text" id="amInput" placeholder="輸入新項目">
       <div id="amColorPick" style="display:none; margin-top: 12px;">
         <label style="font-size: 12px; color: var(--ink-soft);">顏色色塊（選填）</label>
         <input type="color" id="amColor" value="#f4b8c8" style="margin-top: 6px;">
       </div>
     </div>
-    <div class="btn-row" style="border: none; padding: 0;">
-      <button class="btn ghost" data-close>取消</button>
-      <button class="btn primary" id="amSave">確 定</button>
+    <div class="btn-row" style="border: none; padding-top: 12px;">
+      <button class="btn ghost" data-close>關 閉</button>
+      <button class="btn primary" id="amSave">新 增</button>
     </div>
   </div>
 </div>
@@ -2146,12 +2148,62 @@ $('#qtyClear').addEventListener('click', () => { $('#f_qty').value = ''; });
 let addCategory = '';
 function openAddModal(cat) {
   addCategory = cat;
-  $('#amTitle').textContent = '新 增 ' + cat;
+  $('#amTitle').textContent = '管 理 ' + cat;
   $('#amInput').value = '';
   $('#amColorPick').style.display = (cat === '顏色') ? 'block' : 'none';
   $('#amColor').value = '#f4b8c8';
+  renderAddModalList(cat);
   $('#addModal').classList.add('show');
   setTimeout(() => $('#amInput').focus(), 50);
+}
+
+function renderAddModalList(cat) {
+  const DEFAULTS = {
+    '廠商': DEFAULT_VENDORS, '品項': DEFAULT_ITEMS,
+    '款式': DEFAULT_STYLES,  '大小': DEFAULT_SIZES, '顏色': DEFAULT_COLORS
+  };
+  const s = state.settings || {};
+  const all = mergeList(DEFAULTS[cat] || [], s[cat]);
+  const existing = $('#amExistingList');
+  if (!existing) return;
+  if (!all.length) { existing.innerHTML = ''; return; }
+
+  existing.innerHTML =
+    '<div style="font-size:12px;color:var(--ink-soft);letter-spacing:1px;margin-bottom:8px;">現有項目</div>' +
+    all.map(v => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px dotted var(--line);">
+        ${cat === '顏色'
+          ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${colorOf(v)};border:1px solid rgba(0,0,0,.15);flex-shrink:0;"></span>`
+          : ''}
+        <span style="flex:1;font-size:14px;">${escapeHtml(v)}</span>
+        ${(DEFAULTS[cat] || []).includes(v)
+          ? '<span style="font-size:11px;color:var(--ink-soft);padding:2px 8px;">預設</span>'
+          : `<button class="btn small danger" style="padding:2px 10px;font-size:11px;" data-del-setting="${escapeAttr(cat)}||${escapeAttr(v)}">刪除</button>`
+        }
+      </div>
+    `).join('');
+
+  existing.querySelectorAll('[data-del-setting]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const parts = btn.dataset.delSetting.split('||');
+      const c = parts[0], v2 = parts[1];
+      if (!confirm(`確定刪除「${v2}」？`)) return;
+      try {
+        await api('deleteSetting', { '類別': c, '值': v2 });
+        if (state.settings[c]) {
+          state.settings[c] = state.settings[c].filter(x => x !== v2);
+        }
+        if (c === '顏色') {
+          delete colorMap[v2];
+          localStorage.setItem(LS_COLORS, JSON.stringify(colorMap));
+        }
+        renderSelects();
+        renderColorGrid();
+        renderAddModalList(c);
+        toast('已刪除');
+      } catch(e) { toast(e.message, true); }
+    });
+  });
 }
 $$('.add-btn[data-add]').forEach(b => {
   b.addEventListener('click', e => { e.preventDefault(); openAddModal(b.dataset.add); });
