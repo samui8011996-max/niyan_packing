@@ -507,10 +507,16 @@
     position: relative;
     transition: all 0.15s;
   }
-  .pf-card.done {
-    background: linear-gradient(135deg, #f3ecd9 0%, #e8dfc4 100%);
-    
-  }
+.pf-card.done {
+  background: var(--paper-2);
+  opacity: 0.75;
+  border-color: var(--line-dark);
+}
+.pf-card.done .pf-platform,
+.pf-card.done .pf-total,
+.pf-card.done .pf-details {
+  color: var(--ink-soft);
+}
  .pf-card.done::after {
   content: '完了';
   position: absolute;
