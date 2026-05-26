@@ -1403,7 +1403,7 @@ z-index: 10;
         </div>
 
         <p style="font-size: 12px; color: var(--ink-soft); margin-bottom: 8px; letter-spacing: 1px;">
-          ※ 各平台依不同物流分別填寫件數，沒有的留空即可（黑貓為預設物流，沒填寫時自動歸入）
+          ※ 各平台依不同物流分別填寫件數，沒有的留空即可
         </p>
 
         <div id="p_all_platforms"></div>
@@ -2782,7 +2782,7 @@ const numButtons = `
     } else {
       inputs = opts.map(opt => `
         <div class="field">
-          <label>${opt}${opt==='黑貓'?'（預設）':''}</label>
+          <label>${opt}${opt==='黑貓'?'':''}</label>
           <input type="number" min="0" class="pf-input" data-pf="${escapeAttr(name)}" data-logi="${escapeAttr(opt)}" value="${map[opt]||''}">
           ${numButtons}
         </div>
