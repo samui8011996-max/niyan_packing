@@ -2487,7 +2487,7 @@ function renderOrderModal() {
             <div class="field">
               <label>物流公司</label>
               <select id="pLogi">
-                <option value="黑貓" selected>黑貓（預設）</option>
+                <option value="黑貓" selected>黑貓</option>
                 <option value="新竹">新竹</option>
                 <option value="">—</option>
               </select>
@@ -2703,7 +2703,7 @@ function renderPlatformForm() {
     } else {
       inputs = opts.map(opt => `
         <div class="field">
-          <label>${opt}${opt==='黑貓'?'（預設）':''}</label>
+          <label>${opt}${opt==='黑貓'?'':''}</label>
           <input type="number" min="0" class="pf-input" data-pf="${escapeAttr(name)}" data-logi="${escapeAttr(opt)}" value="${map[opt]||''}">
         </div>
       `).join('');
@@ -2826,7 +2826,7 @@ function openPlatformEdit(rec, platformName) {
   } else {
     detailHtml = options.map(opt => `
       <div class="field">
-        <label>${opt}${opt==='黑貓'?'(預設)':''}</label>
+        <label>${opt}${opt==='黑貓'?'':''}</label>
         <input type="number" class="ef-logi" data-logi="${escapeAttr(opt)}" value="${map[opt]||''}">
       </div>
     `).join('');
