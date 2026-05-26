@@ -1879,13 +1879,11 @@ function renderVendorBoard() {
 
 /* ----- 歷史：廠商單（深色條列） ----- */
 function renderHistoryVendor() {
-  const table = $('#hisVendorTable');
   const status   = $('#hisVStatus').value;
   const dateF    = $('#hisVDate').value;
   const vendorF  = $('#hisVVendor').value;
   const itemF    = $('#hisVItem').value.trim().toLowerCase();
 
-  // 填充廠商選單
   const vendorSel = $('#hisVVendor');
   const cur = vendorSel.value;
   const vendors = Array.from(new Set(state.orders.map(o => safeText(o['廠商'])).filter(Boolean))).sort();
@@ -1908,44 +1906,55 @@ function renderHistoryVendor() {
 
   $('#hisVendorCount').textContent = `共 ${orders.length} 筆`;
 
+  // 取得容器（第一次把 table 換成 div）
+  let vContainer = document.getElementById('hisVendorContainer');
+  if (!vContainer) {
+    vContainer = document.createElement('div');
+    vContainer.id = 'hisVendorContainer';
+    $('#hisVendorTable').replaceWith(vContainer);
+  }
+
   if (!orders.length) {
-    table.innerHTML = `<tbody><tr><td colspan="10"><div class="his-empty">無資料</div></td></tr></tbody>`;
+    vContainer.innerHTML = `<div class="his-empty">無資料</div>`;
     return;
   }
 
-  let html = `<thead><tr>
-    <th>下單日期</th>
-    <th>交期</th>
-    <th>廠商</th>
-    <th>品項</th>
-    <th>規格</th>
-    <th>數量</th>
-    <th>完成</th>
-    <th>狀態</th>
-    <th>備註</th>
-    <th></th>
-  </tr></thead><tbody>`;
+  window._vSelected = (window._vSelected || []).filter(id => orders.find(o => o.id === id));
+
+  let html = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="vSelAll" style="width:16px;height:16px;">
+        全選
+      </label>
+      <button class="btn small danger" id="vBulkDel" disabled>刪除選取</button>
+      <span id="vSelCount" style="font-size:12px;color:var(--dk-soft);"></span>
+    </div>
+    <div class="his-table-wrap">
+    <table class="his-table" id="hisVendorTableInner">
+    <thead><tr>
+      <th style="width:32px;"></th>
+      <th>下單日期</th><th>交期</th><th>廠商</th><th>品項</th>
+      <th>規格</th><th>數量</th><th>完成</th><th>狀態</th><th>備註</th><th></th>
+    </tr></thead><tbody>`;
 
   orders.forEach(o => {
     const qty  = Number(o['數量']) || 0;
     const done = doneOf(o.id);
-    const isDone = qty > 0 && done >= qty;
+    const isDone   = qty > 0 && done >= qty;
     const isHidden = hiddenVendor.has(o.id);
     const isUrgent = o['交期'] && o['交期'] === todayStr() && !isDone;
+    const checked  = (window._vSelected || []).includes(o.id) ? 'checked' : '';
 
     const colors = String(o['顏色']||'').split(/[、,，]/).map(c=>c.trim()).filter(Boolean);
     const colorHtml = colors.map(c => `<span class="swatch" style="background:${colorOf(c)}"></span>${escapeHtml(c)}`).join(' ');
-    const specPieces = [
-      safeText(o['款式']),
-      colorHtml,
-      safeText(o['大小'])
-    ].filter(Boolean).join(' / ');
+    const specPieces = [safeText(o['款式']), colorHtml, safeText(o['大小'])].filter(Boolean).join(' / ');
 
     let statusHtml = '';
-    if (isHidden)       statusHtml = '<span class="status-pill" style="border-color:var(--dk-soft);color:var(--dk-soft);">已隱藏</span>';
-    else if (isDone)    statusHtml = '<span class="status-pill done">已完成</span>';
-    else if (isUrgent)  statusHtml = '<span class="status-pill urgent">急單</span>';
-    else                statusHtml = '<span class="status-pill ing">進行中</span>';
+    if (isHidden)      statusHtml = '<span class="status-pill" style="border-color:var(--dk-soft);color:var(--dk-soft);">已隱藏</span>';
+    else if (isDone)   statusHtml = '<span class="status-pill done">已完成</span>';
+    else if (isUrgent) statusHtml = '<span class="status-pill urgent">急單</span>';
+    else               statusHtml = '<span class="status-pill ing">進行中</span>';
 
     const doneClass = qty > 0 ? (done >= qty ? 'full' : (done > 0 ? 'partial' : 'zero')) : 'zero';
     const pack = safeText(o['附加']);
@@ -1953,13 +1962,14 @@ function renderHistoryVendor() {
     const noteCombined = [pack ? '📦 '+pack : '', note].filter(Boolean).join(' / ');
 
     html += `<tr class="${isDone?'done':''}" data-id="${o.id}">
-      <td>${fmtDate(o['下單日期']) || '—'}</td>
+      <td><input type="checkbox" class="v-sel-chk" data-id="${o.id}" style="width:15px;height:15px;" ${checked}></td>
+      <td>${fmtDate(o['下單日期'])||'—'}</td>
       <td>${o['交期'] ? fmtDate(o['交期']) : '—'}</td>
       <td>${escapeHtml(safeText(o['廠商'])||'—')}</td>
       <td><b>${escapeHtml(safeText(o['品項'])||'—')}</b></td>
-      <td>${specPieces || '—'}</td>
-      <td class="num">${qty || '—'}</td>
-      <td class="num ${doneClass}">${qty>0 ? done : '—'}</td>
+      <td>${specPieces||'—'}</td>
+      <td class="num">${qty||'—'}</td>
+      <td class="num ${doneClass}">${qty>0?done:'—'}</td>
       <td>${statusHtml}</td>
       <td style="max-width:200px;white-space:normal;font-size:12px;color:var(--dk-soft);">${escapeHtml(noteCombined)}</td>
       <td>
@@ -1970,13 +1980,57 @@ function renderHistoryVendor() {
       </td>
     </tr>`;
   });
-  html += '</tbody>';
-  table.innerHTML = html;
 
-  table.querySelectorAll('[data-open]').forEach(b => {
+  html += `</tbody></table></div>`;
+  vContainer.innerHTML = html;
+
+  // 全選邏輯
+  const vSelAll   = document.getElementById('vSelAll');
+  const vBulkDel  = document.getElementById('vBulkDel');
+  const vSelCount = document.getElementById('vSelCount');
+
+  function updateVSel() {
+    const all     = vContainer.querySelectorAll('.v-sel-chk');
+    const checked = vContainer.querySelectorAll('.v-sel-chk:checked');
+    window._vSelected = Array.from(checked).map(c => c.dataset.id);
+    vBulkDel.disabled = window._vSelected.length === 0;
+    vSelCount.textContent = window._vSelected.length ? `已選 ${window._vSelected.length} 筆` : '';
+    vSelAll.checked = checked.length > 0 && checked.length === all.length;
+    vSelAll.indeterminate = checked.length > 0 && checked.length < all.length;
+  }
+
+  vSelAll.addEventListener('change', () => {
+    vContainer.querySelectorAll('.v-sel-chk').forEach(c => c.checked = vSelAll.checked);
+    updateVSel();
+  });
+  vContainer.querySelectorAll('.v-sel-chk').forEach(c => c.addEventListener('change', updateVSel));
+  updateVSel();
+
+  // 批次刪除
+  vBulkDel.addEventListener('click', async () => {
+    const ids = window._vSelected.slice();
+    if (!ids.length) return;
+    if (!confirm(`確定刪除選取的 ${ids.length} 筆？相關完成紀錄也會一併刪除。`)) return;
+    vBulkDel.disabled = true;
+    const orig = vBulkDel.textContent;
+    vBulkDel.textContent = '刪除中…';
+    let ok = 0;
+    for (const id of ids) {
+      try { await api('deleteOrder', { id }); hiddenVendor.delete(id); ok++; }
+      catch(e) { console.error(e); }
+    }
+    saveHidden();
+    window._vSelected = [];
+    await loadAll();
+    toast(`已刪除 ${ok} 筆`);
+    vBulkDel.textContent = orig;
+  });
+
+  // 單筆操作
+  vContainer.querySelectorAll('[data-open]').forEach(b => {
     b.addEventListener('click', () => openOrderModal(b.dataset.open));
   });
-  table.querySelectorAll('[data-unhide]').forEach(b => {
+  vContainer.querySelectorAll('[data-unhide]').forEach(b => {
     b.addEventListener('click', () => {
       hiddenVendor.delete(b.dataset.unhide);
       saveHidden();
@@ -1985,7 +2039,7 @@ function renderHistoryVendor() {
       toast('已取消隱藏');
     });
   });
-  table.querySelectorAll('[data-del-v]').forEach(b => {
+  vContainer.querySelectorAll('[data-del-v]').forEach(b => {
     b.addEventListener('click', async () => {
       if (!confirm('確定刪除此訂單？相關完成紀錄也會一併刪除。')) return;
       try {
@@ -1994,14 +2048,14 @@ function renderHistoryVendor() {
         saveHidden();
         await loadAll();
         toast('已刪除');
-      } catch (e) { toast(e.message, true); }
+      } catch(e) { toast(e.message, true); }
     });
   });
 }
 
+
 /* ----- 歷史：平台單（深色條列） ----- */
 function renderHistoryPlatform() {
-  const table = $('#hisPlatformTable');
   const date = $('#hisDate').value;
   const pf   = $('#hisPlatform').value;
   const st   = $('#hisPStatus').value;
@@ -2009,8 +2063,8 @@ function renderHistoryPlatform() {
   let items = state.platforms.slice();
   if (date) items = items.filter(p => fmtDate(p['日期']) === date);
   if (pf)   items = items.filter(p => p['平台'] === pf);
-if (st === 'done') items = items.filter(p => isDone(p['已完成']));
-if (st === 'open') items = items.filter(p => !isDone(p['已完成']));
+  if (st === 'done') items = items.filter(p => isDone(p['已完成']));
+  if (st === 'open') items = items.filter(p => !isDone(p['已完成']));
 
   items.sort((a,b) => {
     const da = a['日期']||'', db = b['日期']||'';
@@ -2020,23 +2074,40 @@ if (st === 'open') items = items.filter(p => !isDone(p['已完成']));
 
   $('#hisPfCount').textContent = `共 ${items.length} 筆`;
 
+  // 取得容器
+  let pfContainer = document.getElementById('hisPfContainer');
+  if (!pfContainer) {
+    pfContainer = document.createElement('div');
+    pfContainer.id = 'hisPfContainer';
+    $('#hisPlatformTable').replaceWith(pfContainer);
+  }
+
   if (!items.length) {
-    table.innerHTML = `<tbody><tr><td colspan="6"><div class="his-empty">無資料</div></td></tr></tbody>`;
+    pfContainer.innerHTML = `<div class="his-empty">無資料</div>`;
     return;
   }
 
-  let html = `<thead><tr>
-    <th>日期</th>
-    <th>平台</th>
-    <th>明細</th>
-    <th>總件數</th>
-    <th>狀態</th>
-    <th>備註</th>
-    <th></th>
-  </tr></thead><tbody>`;
+  window._pfSelected = (window._pfSelected || []).filter(id => items.find(p => p.id === id));
 
-items.forEach(rec => {
+  let html = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="pfSelAll" style="width:16px;height:16px;">
+        全選
+      </label>
+      <button class="btn small danger" id="pfBulkDel" disabled>刪除選取</button>
+      <span id="pfSelCount" style="font-size:12px;color:var(--dk-soft);"></span>
+    </div>
+    <div class="his-table-wrap">
+    <table class="his-table" id="hisPlatformTableInner">
+    <thead><tr>
+      <th style="width:32px;"></th>
+      <th>日期</th><th>平台</th><th>明細</th><th>總件數</th><th>狀態</th><th>備註</th><th></th>
+    </tr></thead><tbody>`;
+
+  items.forEach(rec => {
     const done = isDone(rec['已完成']);
+    const checked = (window._pfSelected || []).includes(rec.id) ? 'checked' : '';
     const detail = rec['明細'] || [];
     let detailStr = '';
     if (Array.isArray(detail) && detail.length) {
@@ -2044,9 +2115,10 @@ items.forEach(rec => {
     }
     const note = safeText(rec['備註']);
     html += `<tr class="${done?'done':''}">
+      <td><input type="checkbox" class="pf-sel-chk" data-id="${rec.id}" style="width:15px;height:15px;" ${checked}></td>
       <td>${fmtDate(rec['日期'])}</td>
       <td><b>${escapeHtml(rec['平台'])}</b></td>
-      <td style="font-size:12px;color:var(--dk-soft);">${detailStr || '—'}</td>
+      <td style="font-size:12px;color:var(--dk-soft);">${detailStr||'—'}</td>
       <td class="num ${rec['總件數']>0?'full':'zero'}">${rec['總件數']||0}</td>
       <td>${done
         ? '<span class="status-pill done">已完成</span>'
@@ -2058,23 +2130,66 @@ items.forEach(rec => {
       </td>
     </tr>`;
   });
-  html += '</tbody>';
-  table.innerHTML = html;
 
-  table.querySelectorAll('[data-edit-pf]').forEach(b => {
+  html += `</tbody></table></div>`;
+  pfContainer.innerHTML = html;
+
+  // 全選邏輯
+  const pfSelAll   = document.getElementById('pfSelAll');
+  const pfBulkDel  = document.getElementById('pfBulkDel');
+  const pfSelCount = document.getElementById('pfSelCount');
+
+  function updatePfSel() {
+    const all     = pfContainer.querySelectorAll('.pf-sel-chk');
+    const checked = pfContainer.querySelectorAll('.pf-sel-chk:checked');
+    window._pfSelected = Array.from(checked).map(c => c.dataset.id);
+    pfBulkDel.disabled = window._pfSelected.length === 0;
+    pfSelCount.textContent = window._pfSelected.length ? `已選 ${window._pfSelected.length} 筆` : '';
+    pfSelAll.checked = checked.length > 0 && checked.length === all.length;
+    pfSelAll.indeterminate = checked.length > 0 && checked.length < all.length;
+  }
+
+  pfSelAll.addEventListener('change', () => {
+    pfContainer.querySelectorAll('.pf-sel-chk').forEach(c => c.checked = pfSelAll.checked);
+    updatePfSel();
+  });
+  pfContainer.querySelectorAll('.pf-sel-chk').forEach(c => c.addEventListener('change', updatePfSel));
+  updatePfSel();
+
+  // 批次刪除
+  pfBulkDel.addEventListener('click', async () => {
+    const ids = window._pfSelected.slice();
+    if (!ids.length) return;
+    if (!confirm(`確定刪除選取的 ${ids.length} 筆平台單？`)) return;
+    pfBulkDel.disabled = true;
+    const orig = pfBulkDel.textContent;
+    pfBulkDel.textContent = '刪除中…';
+    let ok = 0;
+    for (const id of ids) {
+      try { await api('deletePlatform', { id }); ok++; }
+      catch(e) { console.error(e); }
+    }
+    window._pfSelected = [];
+    await loadAll();
+    toast(`已刪除 ${ok} 筆`);
+    pfBulkDel.textContent = orig;
+  });
+
+  // 單筆操作
+  pfContainer.querySelectorAll('[data-edit-pf]').forEach(b => {
     b.addEventListener('click', () => {
       const rec = state.platforms.find(x => x.id === b.dataset.editPf);
       if (rec) openPlatformEdit(rec);
     });
   });
-  table.querySelectorAll('[data-del-pf]').forEach(b => {
+  pfContainer.querySelectorAll('[data-del-pf]').forEach(b => {
     b.addEventListener('click', async () => {
       if (!confirm('確定刪除此平台單？')) return;
       try {
         await api('deletePlatform', { id: b.dataset.delPf });
         await loadAll();
         toast('已刪除');
-      } catch (e) { toast(e.message, true); }
+      } catch(e) { toast(e.message, true); }
     });
   });
 }
