@@ -1658,9 +1658,9 @@ function renderPlatformBoard() {
     list.innerHTML = visibleNames.map(name => {
       const rec = byPlatform[name];
       const hideKey = name + '|' + today;
-      if (!rec) {
-        return `
-          <div class="pf-card" style="border-style: dashed; opacity: 0.55;">
+    if (!rec) {
+  return `
+    <div class="pf-card" style="border-style: dashed; opacity: 0.55;" data-empty-platform="${escapeAttr(name)}">
             <button class="card-hide-btn" data-hide-pf="${escapeAttr(hideKey)}" title="隱藏">×</button>
             <div class="pf-platform">
               <span>${name}</span>
@@ -1713,12 +1713,12 @@ ${isDone(rec['已完成'])
   }
 
   // 事件
-  list.querySelectorAll('[data-hide-pf]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      hiddenPf.add(btn.dataset.hidePf);
-      saveHidden();
-      renderPlatformBoard();
+// 點「尚未填寫」的空卡片 → 開啟新增 Modal
+  list.querySelectorAll('[data-empty-platform]').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('[data-hide-pf]')) return;
+      const platform = card.dataset.emptyPlatform;
+      openPlatformEdit(null, platform);
     });
   });
 list.querySelectorAll('.pf-card').forEach(card => {
@@ -2809,19 +2809,24 @@ $('#pSubmit').addEventListener('click', async () => {
 });
 
 /* ----- 平台單編輯 Modal ----- */
-function openPlatformEdit(rec) {
-  $('#pfmTitle').textContent = '編 輯 ' + rec['平台'];
-  const options = PLATFORM_LOGISTICS[rec['平台']] || [];
+function openPlatformEdit(rec, platformName) {
+  // rec 可能是 null（新增模式），此時用 platformName + 今天日期建立
+  const isNew = !rec;
+  const platform = isNew ? platformName : rec['平台'];
+  const date = isNew ? todayStr() : fmtDate(rec['日期']);
+
+  $('#pfmTitle').textContent = (isNew ? '新 增 ' : '編 輯 ') + platform;
+  const options = PLATFORM_LOGISTICS[platform] || [];
   const map     = {};
-  (rec['明細']||[]).forEach(d => { map[d.物流] = d.件數 || 0; });
+  if (!isNew) (rec['明細']||[]).forEach(d => { map[d.物流] = d.件數 || 0; });
 
   let detailHtml = '';
   if (!options.length) {
-    detailHtml = `<div class="field"><label>總件數</label><input type="number" id="ef_total_only" value="${rec['總件數']||0}"></div>`;
+    detailHtml = `<div class="field"><label>總件數</label><input type="number" id="ef_total_only" value="${isNew ? '' : (rec['總件數']||0)}"></div>`;
   } else {
     detailHtml = options.map(opt => `
       <div class="field">
-        <label>${opt}${opt==='黑貓'?'（預設）':''}</label>
+        <label>${opt}${opt==='黑貓'?'(預設)':''}</label>
         <input type="number" class="ef-logi" data-logi="${escapeAttr(opt)}" value="${map[opt]||''}">
       </div>
     `).join('');
@@ -2829,9 +2834,9 @@ function openPlatformEdit(rec) {
 
   $('#pfmBody').innerHTML = `
     <div class="form-grid">${detailHtml}</div>
-    <div class="field" style="margin-top:12px;"><label>備註</label><textarea id="ef_note">${escapeHtml(safeText(rec['備註']))}</textarea></div>
+    <div class="field" style="margin-top:12px;"><label>備註</label><textarea id="ef_note">${escapeHtml(isNew ? '' : safeText(rec['備註']))}</textarea></div>
     <div class="btn-row split">
-      <button class="btn small danger" id="efDel">刪除</button>
+      ${isNew ? '<span></span>' : '<button class="btn small danger" id="efDel">刪除</button>'}
       <div style="display:flex;gap:10px;">
         <button class="btn small ghost"  data-close>取消</button>
         <button class="btn small primary" id="efSave">儲存</button>
@@ -2851,23 +2856,40 @@ function openPlatformEdit(rec) {
         total += n;
       });
     }
+    const noteVal = $('#ef_note').value;
+    if (total <= 0 && !noteVal.trim()) {
+      toast('請至少填入件數或備註', true);
+      return;
+    }
     try {
-      await api('updatePlatform', { id: rec.id, '明細': detail, '總件數': total, '備註': $('#ef_note').value });
+      if (isNew) {
+        await api('addPlatform', {
+          '日期': date,
+          '平台': platform,
+          '明細': detail,
+          '總件數': total,
+          '備註': noteVal
+        });
+      } else {
+        await api('updatePlatform', { id: rec.id, '明細': detail, '總件數': total, '備註': noteVal });
+      }
       $('#pfModal').classList.remove('show');
       await loadAll();
-      toast('已儲存');
+      toast(isNew ? '已新增' : '已儲存');
     } catch (e) { toast(e.message, true); }
   });
 
-  $('#efDel').addEventListener('click', async () => {
-    if (!confirm('確定刪除？')) return;
-    try {
-      await api('deletePlatform', { id: rec.id });
-      $('#pfModal').classList.remove('show');
-      await loadAll();
-      toast('已刪除');
-    } catch (e) { toast(e.message, true); }
-  });
+  if (!isNew) {
+    $('#efDel').addEventListener('click', async () => {
+      if (!confirm('確定刪除？')) return;
+      try {
+        await api('deletePlatform', { id: rec.id });
+        $('#pfModal').classList.remove('show');
+        await loadAll();
+        toast('已刪除');
+      } catch (e) { toast(e.message, true); }
+    });
+  }
 }
 
 /* ============ 分頁切換 ============ */
