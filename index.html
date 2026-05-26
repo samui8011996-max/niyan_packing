@@ -533,7 +533,7 @@
   opacity: 0.25;
   pointer-events: none;
   white-space: nowrap;
-  z-index: 2;
+z-index: 10;
 }
   .pf-platform {
     font-family: 'Shippori Mincho', serif;
@@ -1563,7 +1563,10 @@ function safeText(v) {
   if (!s || s === '#ERROR!' || s === '#N/A' || s === '#VALUE!' || s === '#REF!' || s === '#NAME?') return '';
   return s;
 }
-
+function isDone(v) {
+  // 已完成欄位：可能是字串 'TRUE' 或布林 true
+  return v === true || v === 'TRUE' || v === 'true';
+}
 /* ============ API ============ */
 async function api(action, payload = {}) {
   if (!API_URL) throw new Error('尚未設定 API 網址');
@@ -1625,7 +1628,7 @@ function renderPlatformBoard() {
   let undoneCanBulk = 0;
   PLATFORM_ORDER.forEach(name => {
     const rec = byPlatform[name];
-    if (rec && rec['已完成'] !== 'TRUE') {
+    if (rec && !isDone(rec['已完成'])) {
       const note = safeText(rec['備註']);
       if (!note) undoneCanBulk++;
     }
@@ -1675,16 +1678,16 @@ function renderPlatformBoard() {
       }
       const note = safeText(rec['備註']);
       return `
-        <div class="pf-card ${rec['已完成']==='TRUE' ? 'done' : ''}" data-id="${rec.id}">
+      <div class="pf-card ${isDone(rec['已完成']) ? 'done' : ''}" data-id="${rec.id}">
           <button class="card-hide-btn" data-hide-pf="${escapeAttr(hideKey)}" title="隱藏">×</button>
           <div class="pf-platform"><span>${name}</span></div>
           <div class="pf-total"><span class="label">總</span>${rec['總件數']||0}</div>
           <div class="pf-details">${detailHtml}</div>
           ${note ? `<div style="font-size:12px;color:var(--stamp-red);font-style:italic;border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
           <div class="pf-actions">
-            ${rec['已完成']==='TRUE'
-              ? `<button class="btn small ghost" data-act="undone">取消完成</button>`
-              : `<button class="btn small primary" data-act="done">已完成 ✓</button>`}
+          ${isDone(rec['已完成'])
+  ? `<button class="btn small ghost" data-act="undone">取消完成</button>`
+  : `<button class="btn small primary" data-act="done">已完成 ✓</button>`}
             <button class="btn small" data-act="edit">編輯</button>
           </div>
         </div>
@@ -1743,11 +1746,11 @@ function renderPlatformBoard() {
 /* 一鍵完成全部平台（未完成、無備註的） */
 $('#pfBulkDone').addEventListener('click', async () => {
   const today = todayStr();
-  const targets = state.platforms.filter(p =>
-    fmtDate(p['日期']) === today &&
-    p['已完成'] !== 'TRUE' &&
-    !safeText(p['備註'])
-  );
+const targets = state.platforms.filter(p =>
+  fmtDate(p['日期']) === today &&
+  !isDone(p['已完成']) &&
+  !safeText(p['備註'])
+);
   if (!targets.length) { toast('沒有可一鍵完成的項目', true); return; }
   if (!confirm(`將標記 ${targets.length} 個平台為已完成（不含有備註原因者）?`)) return;
   const btn = $('#pfBulkDone');
@@ -2003,8 +2006,8 @@ function renderHistoryPlatform() {
   let items = state.platforms.slice();
   if (date) items = items.filter(p => fmtDate(p['日期']) === date);
   if (pf)   items = items.filter(p => p['平台'] === pf);
-  if (st === 'done') items = items.filter(p => p['已完成'] === 'TRUE');
-  if (st === 'open') items = items.filter(p => p['已完成'] !== 'TRUE');
+if (st === 'done') items = items.filter(p => isDone(p['已完成']));
+if (st === 'open') items = items.filter(p => !isDone(p['已完成']));
 
   items.sort((a,b) => {
     const da = a['日期']||'', db = b['日期']||'';
@@ -2029,20 +2032,20 @@ function renderHistoryPlatform() {
     <th></th>
   </tr></thead><tbody>`;
 
-  items.forEach(rec => {
-    const isDone = rec['已完成'] === 'TRUE';
+items.forEach(rec => {
+    const done = isDone(rec['已完成']);
     const detail = rec['明細'] || [];
     let detailStr = '';
     if (Array.isArray(detail) && detail.length) {
       detailStr = detail.map(d => `${escapeHtml(d.物流||'—')} ${d.件數||0}`).join('　·　');
     }
     const note = safeText(rec['備註']);
-    return html += `<tr class="${isDone?'done':''}">
+    html += `<tr class="${done?'done':''}">
       <td>${fmtDate(rec['日期'])}</td>
       <td><b>${escapeHtml(rec['平台'])}</b></td>
       <td style="font-size:12px;color:var(--dk-soft);">${detailStr || '—'}</td>
       <td class="num ${rec['總件數']>0?'full':'zero'}">${rec['總件數']||0}</td>
-      <td>${isDone
+      <td>${done
         ? '<span class="status-pill done">已完成</span>'
         : '<span class="status-pill ing">未完成</span>'}</td>
       <td style="max-width:200px;white-space:normal;font-size:12px;color:var(--dk-soft);">${escapeHtml(note)}</td>
