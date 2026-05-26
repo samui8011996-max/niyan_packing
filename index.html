@@ -472,10 +472,67 @@ html, body {
     font-size: 11px;
     color: var(--ink-soft);
   }
-  .pf-inputs input {
-    font-size: 14px;
-    padding: 6px 10px;
-  }
+.pf-inputs input {
+  font-size: 16px;
+  font-weight: 700;
+  padding: 6px 10px;
+  text-align: center;
+}
+/* 隱藏瀏覽器預設的數字上下箭頭 */
+.pf-inputs input[type=number]::-webkit-inner-spin-button,
+.pf-inputs input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pf-inputs input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* 件數加減按鈕群 */
+.pf-num-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+.pf-num-wrap input {
+  flex: 1;
+  min-width: 0;
+}
+.pf-num-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+.pf-num-btn {
+  flex: 1;
+  min-width: 38px;
+  font-family: 'Klee One', serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 0;
+  background: var(--paper-2);
+  color: var(--ink);
+  border: 1px solid var(--accent-soft);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.pf-num-btn:hover {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.pf-num-btn.minus {
+  background: var(--paper-2);
+  color: var(--stamp-red);
+  border-color: var(--stamp-red);
+}
+.pf-num-btn.minus:hover {
+  background: var(--stamp-red);
+  color: #fff;
+}
   .pf-form-note {
     margin-top: 8px;
     width: 100%;
@@ -2693,18 +2750,30 @@ function renderPlatformForm() {
     const noteVal = existing ? safeText(existing['備註']) : '';
 
     let inputs = '';
+// 每個輸入框後面跟一組 -1 / +1 / +5 / +10 按鈕
+    const numButtons = `
+      <div class="pf-num-btns">
+        <button type="button" class="pf-num-btn minus" data-delta="-1">−1</button>
+        <button type="button" class="pf-num-btn" data-delta="1">+1</button>
+        <button type="button" class="pf-num-btn" data-delta="5">+5</button>
+        <button type="button" class="pf-num-btn" data-delta="10">+10</button>
+      </div>
+    `;
+
     if (!opts.length) {
       inputs = `
         <div class="field">
           <label>總件數</label>
           <input type="number" min="0" class="pf-input" data-pf="${escapeAttr(name)}" data-logi="__total__" value="${existing ? existing['總件數']||'' : ''}">
+          ${numButtons}
         </div>
       `;
     } else {
       inputs = opts.map(opt => `
         <div class="field">
-          <label>${opt}${opt==='黑貓'?'':''}</label>
+          <label>${opt}${opt==='黑貓'?'（預設）':''}</label>
           <input type="number" min="0" class="pf-input" data-pf="${escapeAttr(name)}" data-logi="${escapeAttr(opt)}" value="${map[opt]||''}">
+          ${numButtons}
         </div>
       `).join('');
     }
@@ -2723,9 +2792,26 @@ function renderPlatformForm() {
     `;
   }).join('') + '</div>';
 
-  area.querySelectorAll('.pf-input').forEach(inp => {
+area.querySelectorAll('.pf-input').forEach(inp => {
     inp.addEventListener('input', () => updatePfSum(inp.dataset.pf));
   });
+
+  // 加減按鈕：找同一個 .field 裡的 input 加減
+  area.querySelectorAll('.pf-num-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const field = btn.closest('.field');
+      if (!field) return;
+      const inp = field.querySelector('.pf-input');
+      if (!inp) return;
+      const delta = Number(btn.dataset.delta) || 0;
+      const cur = Number(inp.value) || 0;
+      const next = Math.max(0, cur + delta);
+      inp.value = next === 0 ? '' : next;
+      updatePfSum(inp.dataset.pf);
+    });
+  });
+
   PLATFORM_ORDER.forEach(updatePfSum);
 }
 
