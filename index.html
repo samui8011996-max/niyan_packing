@@ -1388,9 +1388,15 @@ z-index: 10;
           </div>
         </div>
 
-        <div class="btn-row">
+<div class="btn-row">
           <button class="btn ghost" id="btnReset">清 空</button>
-          <button class="btn primary" id="btnSubmit">送 出</button>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);cursor:pointer;">
+              <input type="checkbox" id="f_all_done" style="width:16px;height:16px;">
+              新增時直接標記全部完成
+            </label>
+            <button class="btn primary" id="btnSubmit">送 出</button>
+          </div>
         </div>
       </div>
     </section>
@@ -2473,8 +2479,11 @@ async function submitVendor() {
   btn.disabled = true;
   const orig = btn.textContent;
   btn.textContent = '送 出 中…';
-  try {
-    await api('addOrder', {
+try {
+    const allDone = $('#f_all_done').checked;
+    const finalQty = Number($('#f_qty').value) || 0;
+
+    const result = await api('addOrder', {
       '下單日期': $('#f_date').value,
       '交期':     $('#f_due').value,
       '廠商':     $('#f_vendor').value,
@@ -2486,13 +2495,26 @@ async function submitVendor() {
       '附加':     getAdditionalText(),
       '備註':     $('#f_note').value
     });
-    toast('送出成功');
+
+    if (allDone && finalQty > 0 && result?.id) {
+      await api('addProgress', {
+        '訂單id':   result.id,
+        '完成日期': $('#f_date').value || todayStr(),
+        '完成數量': finalQty,
+        '總箱數':   '',
+        '物流公司': '黑貓',
+        '包貨人員': '其他'
+      });
+      toast('已送出並標記全部完成');
+    } else {
+      toast('送出成功');
+    }
+
     resetVendorForm();
     await loadAll();
     switchTab('board');
   } catch (e) { toast(e.message, true); }
-  finally { btn.disabled = false; btn.textContent = orig; }
-}
+  finally { btn.disabled = false; btn.textContent = orig; }}
 $('#btnSubmit').addEventListener('click', submitVendor);
 $('#btnReset').addEventListener('click', resetVendorForm);
 
