@@ -2693,10 +2693,16 @@ async function addOrderProgress() {
   if (!staff)            { toast('請選包貨人員', true); return; }
 
   // 鎖住所有按鈕
+const saveBtn = $('#pSave');
   const allBtns = $('#omBody').querySelectorAll('button, input, select');
+  // 點下去瞬間鎖定 + 變灰
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = '上傳中…';
+    saveBtn.style.opacity = '0.5';
+    saveBtn.style.cursor = 'not-allowed';
+  }
   allBtns.forEach(el => { el.disabled = true; });
-  const saveBtn = $('#pSave');
-  if (saveBtn) { saveBtn.textContent = '上傳中…'; }
 
   try {
     const logi = $('#pLogi').value || '黑貓';
