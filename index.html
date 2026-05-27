@@ -2556,13 +2556,27 @@ function renderOrderModal() {
               <label>包貨人員</label>
               <select id="pStaff">${staffOpts}</select>
             </div>
-            <div class="field">
-              <label>完成數量</label>
-              <input type="number" id="pQty" min="1" max="${remaining}" placeholder="輸入或勾選…">
-            </div>
-            <div class="field">
+           <div class="field">
+  <label>完成數量</label>
+  <input type="number" id="pQty" min="1" max="${remaining}" placeholder="輸入或勾選…">
+  <div class="pf-num-btns">
+    <button type="button" class="pf-num-btn" data-pqty="1">+1</button>
+    <button type="button" class="pf-num-btn" data-pqty="5">+5</button>
+    <button type="button" class="pf-num-btn" data-pqty="10">+10</button>
+    <button type="button" class="pf-num-btn" data-pqty="100">+100</button>
+    <button type="button" class="pf-num-btn clear" data-pqty-clear="1">清除</button>
+  </div>
+</div>
+            <div class="field">      
               <label>總箱數</label>
               <input type="number" id="pBoxes" min="0" placeholder="—">
+              <div class="pf-num-btns">
+                <button type="button" class="pf-num-btn" data-pboxes="1">+1</button>
+                <button type="button" class="pf-num-btn" data-pboxes="5">+5</button>
+                <button type="button" class="pf-num-btn" data-pboxes="10">+10</button>
+                <button type="button" class="pf-num-btn" data-pboxes="100">+100</button>
+                <button type="button" class="pf-num-btn clear" data-pboxes-clear="1">清除</button>
+              </div>
             </div>
             <div class="field">
               <label>物流公司</label>
@@ -2621,6 +2635,31 @@ function renderOrderModal() {
     chk.addEventListener('change', () => { pQty.value = chk.checked ? remaining : ''; });
     pQty.addEventListener('input', () => { chk.checked = (Number(pQty.value) >= remaining && remaining > 0); });
   }
+
+// 完成數量按鈕
+  $('#omBody').querySelectorAll('[data-pqty]').forEach(b => {
+    b.addEventListener('click', () => {
+      const inp = $('#pQty');
+      inp.value = (Number(inp.value) || 0) + Number(b.dataset.pqty);
+      inp.dispatchEvent(new Event('input'));
+    });
+  });
+  $('#omBody').querySelector('[data-pqty-clear]')?.addEventListener('click', () => {
+    $('#pQty').value = '';
+    $('#pQty').dispatchEvent(new Event('input'));
+  });
+
+  // 總箱數按鈕
+  $('#omBody').querySelectorAll('[data-pboxes]').forEach(b => {
+    b.addEventListener('click', () => {
+      const inp = $('#pBoxes');
+      inp.value = (Number(inp.value) || 0) + Number(b.dataset.pboxes);
+    });
+  });
+  $('#omBody').querySelector('[data-pboxes-clear]')?.addEventListener('click', () => {
+    $('#pBoxes').value = '';
+  });
+ 
   $('#pSave')?.addEventListener('click', addOrderProgress);
 
   $('#omBody').querySelectorAll('.del-btn').forEach(b => {
@@ -2776,10 +2815,10 @@ function renderPlatformForm() {
 // 每個輸入框後面跟一組 -1 / +1 / +5 / +10 按鈕
 const numButtons = `
   <div class="pf-num-btns">
-    <button type="button" class="pf-num-btn minus" data-delta="-1">−1</button>
     <button type="button" class="pf-num-btn" data-delta="1">+1</button>
     <button type="button" class="pf-num-btn" data-delta="5">+5</button>
     <button type="button" class="pf-num-btn" data-delta="10">+10</button>
+    <button type="button" class="pf-num-btn" data-delta="100">+100</button>
     <button type="button" class="pf-num-btn clear" data-clear="1">清除</button>
   </div>
 `;
