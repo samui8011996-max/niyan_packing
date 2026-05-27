@@ -1214,10 +1214,31 @@ z-index: 10;
     .tape { left: 16px; }
     .tape.t-blue { right: 16px; }
   }
+.corner-settings {
+  position: fixed;
+  top: 12px; left: 12px;
+  z-index: 200;
+  background: var(--paper);
+  border: 1.5px solid var(--line-dark);
+  border-radius: 50%;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+}
+.corner-settings:hover {
+  background: var(--ink);
+  color: var(--paper);
+  transform: rotate(30deg);
+}
+
+ 
 </style>
 </head>
 <body>
-
+<button class="corner-settings" id="cornerSettings" title="設定">⚙</button>
 <div class="app">
 
   <!-- ===== 標頭 ===== -->
@@ -1226,6 +1247,10 @@ z-index: 10;
   <div class="ja">packing notebook</div>
   <h1>包 貨 紀 錄</h1>
   <div class="sub">泥 研 製 所</div>
+
+<button class="btn small ghost" id="manualRefresh" style="margin-top:8px;font-size:12px;letter-spacing:2px;">↻ 更新</button>
+
+ 
 </div>
 
   <div class="main">
@@ -3229,6 +3254,19 @@ if (API_URL) {
   switchTab('settings');
   toast('請先設定 API 網址', true);
 }
+document.getElementById('cornerSettings').addEventListener('click', () => {
+  switchTab('settings');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+ document.getElementById('manualRefresh').addEventListener('click', async () => {
+  const btn = document.getElementById('manualRefresh');
+  btn.textContent = '同步中…';
+  btn.disabled = true;
+  await loadAll();
+  btn.textContent = '↻ 更新';
+  btn.disabled = false;
+  toast('已更新');
+});
 </script>
 </body>
 </html>
