@@ -1217,7 +1217,7 @@ z-index: 10;
 .corner-settings {
   position: fixed;
   top: 12px; left: 12px;
-  z-index: 200;
+  z-index: 9999;          /* ← 改這行，從 200 改成 9999 */
   background: var(--paper);
   border: 1.5px solid var(--line-dark);
   border-radius: 50%;
@@ -1260,7 +1260,7 @@ z-index: 10;
       <button class="tab" data-tab="vendor">新 廠 商 單</button>
       <button class="tab" data-tab="platform">新 平 台 單</button>
       <button class="tab" data-tab="history">歷 史</button>
-      <button class="tab" data-tab="settings">設 定</button>
+    
     </div>
 
     <!-- 公告 -->
