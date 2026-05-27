@@ -3255,9 +3255,36 @@ if (API_URL) {
   switchTab('settings');
   toast('請先設定 API 網址', true);
 }
+const settingsModal = document.getElementById('settingsModal');
 document.getElementById('cornerSettings').addEventListener('click', () => {
-  switchTab('settings');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const isOpen = settingsModal.classList.contains('show');
+  if (isOpen) {
+    settingsModal.classList.remove('show');
+  } else {
+    document.getElementById('cfgUrl2').value = API_URL;
+    document.getElementById('cfgStatus2').textContent = '';
+    document.getElementById('cfgStatus2').className = 'status';
+    settingsModal.classList.add('show');
+  }
+});
+
+document.getElementById('cfgSave2').addEventListener('click', () => {
+  API_URL = document.getElementById('cfgUrl2').value.trim();
+  localStorage.setItem(LS_URL, API_URL);
+  document.getElementById('cfgUrl').value = API_URL;
+  toast('已儲存');
+  loadAll();
+});
+
+document.getElementById('cfgTest2').addEventListener('click', async () => {
+  const s = document.getElementById('cfgStatus2');
+  s.textContent = '測試中…'; s.className = 'status';
+  try {
+    await api('readAll');
+    s.textContent = '✓ 連線成功'; s.className = 'status ok';
+  } catch (e) {
+    s.textContent = '✗ ' + e.message; s.className = 'status err';
+  }
 });
  document.getElementById('manualRefresh').addEventListener('click', async () => {
   const btn = document.getElementById('manualRefresh');
@@ -3269,5 +3296,25 @@ document.getElementById('cornerSettings').addEventListener('click', () => {
   toast('已更新');
 });
 </script>
+<!-- 在 </body> 前加入 -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal" style="max-width: 480px;">
+    <button class="modal-close" data-close>×</button>
+    <h2>設 定</h2>
+    <div class="settings-section">
+      <p style="margin-bottom: 8px;">Apps Script 網頁應用程式網址</p>
+      <input type="text" id="cfgUrl2" placeholder="https://script.google.com/macros/s/.../exec">
+      <div>
+        <button class="btn small" id="cfgSave2">儲 存</button>
+        <button class="btn small ghost" id="cfgTest2">測 試 連 線</button>
+      </div>
+      <div class="status" id="cfgStatus2"></div>
+      <p style="margin-top: 20px; font-size: 12px;">資料每 10 秒自動同步；新增/修改後立即同步。</p>
+      <p style="margin-top: 10px; font-size: 12px;">隱藏的卡片可在歷史紀錄中查看與恢復。</p>
+    </div>
+  </div>
+</div>
+
+ 
 </body>
 </html>
