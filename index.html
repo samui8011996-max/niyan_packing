@@ -52,6 +52,13 @@
     --dk-accent:  var(--accent);
     --dk-red:     var(--stamp-red);
     --dk-green:   #5b8c5a;
+
+#f_all_done_label:has(#f_all_done:checked) {
+  background: var(--tape-green);
+  border-color: #8aab74;
+  color: var(--ink);
+}
+   
   }
 
 html, body {
@@ -1391,10 +1398,10 @@ z-index: 10;
 <div class="btn-row">
           <button class="btn ghost" id="btnReset">清 空</button>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);cursor:pointer;">
-              <input type="checkbox" id="f_all_done" style="width:16px;height:16px;">
-              新增時直接標記全部完成
-            </label>
+          <label id="f_all_done_label" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);cursor:pointer;padding:6px 14px;border-radius:22px;border:1.5px solid var(--line-dark);transition:all 0.15s;user-select:none;">
+  <input type="checkbox" id="f_all_done" style="width:16px;height:16px;cursor:pointer;">
+  新增時直接標記全部完成
+</label>
             <button class="btn primary" id="btnSubmit">送 出</button>
           </div>
         </div>
@@ -3207,7 +3214,7 @@ resetVendorForm();
 resetPlatformForm();
 if (API_URL) {
   loadAll();
-  pollTimer = setInterval(loadAll, 20000);
+ pollTimer = setInterval(loadAll, 10000);
 } else {
   switchTab('settings');
   toast('請先設定 API 網址', true);
