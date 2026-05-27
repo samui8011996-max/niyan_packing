@@ -2617,7 +2617,7 @@ ${note?'<br>📝 '+escapeHtml(note):''}
     <button type="button" class="pf-num-btn" data-pqty="1">+1</button>
     <button type="button" class="pf-num-btn" data-pqty="5">+5</button>
     <button type="button" class="pf-num-btn" data-pqty="10">+10</button>
-    <button type="button" class="pf-num-btn" data-pqty="100">+100</button>
+    <button type="button" class="pf-num-btn" data-pqty="50">+50</button>
     <button type="button" class="pf-num-btn clear" data-pqty-clear="1">清除</button>
   </div>
 </div>
@@ -2628,7 +2628,7 @@ ${note?'<br>📝 '+escapeHtml(note):''}
                 <button type="button" class="pf-num-btn" data-pboxes="1">+1</button>
                 <button type="button" class="pf-num-btn" data-pboxes="5">+5</button>
                 <button type="button" class="pf-num-btn" data-pboxes="10">+10</button>
-                <button type="button" class="pf-num-btn" data-pboxes="100">+100</button>
+                <button type="button" class="pf-num-btn" data-pboxes="50">+50</button>
                 <button type="button" class="pf-num-btn clear" data-pboxes-clear="1">清除</button>
               </div>
             </div>
@@ -2922,7 +2922,7 @@ const numButtons = `
     <button type="button" class="pf-num-btn" data-delta="1">+1</button>
     <button type="button" class="pf-num-btn" data-delta="5">+5</button>
     <button type="button" class="pf-num-btn" data-delta="10">+10</button>
-    <button type="button" class="pf-num-btn" data-delta="100">+100</button>
+    <button type="button" class="pf-num-btn" data-delta="50">+50</button>
     <button type="button" class="pf-num-btn clear" data-clear="1">清除</button>
   </div>
 `;
@@ -2953,7 +2953,7 @@ const numButtons = `
         </div>
         <div class="pf-inputs">${inputs}</div>
         <div class="pf-form-note">
-          <input type="text" class="pf-note-input" data-pf="${escapeAttr(name)}" placeholder="此平台備註（如未出完貨原因…）" value="${escapeAttr(noteVal)}">
+          <input type="text" class="pf-note-input" data-pf="${escapeAttr(name)}" placeholder="平台備註" value="${escapeAttr(noteVal)}">
         </div>
       </div>
     `;
