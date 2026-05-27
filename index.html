@@ -2630,9 +2630,26 @@ function renderOrderModal() {
   `;
   $('#omBody').innerHTML = html;
 
-  const chk = $('#checkAll'), pQty = $('#pQty');
+const chk = $('#checkAll'), pQty = $('#pQty');
   if (chk && pQty) {
-    chk.addEventListener('change', () => { pQty.value = chk.checked ? remaining : ''; });
+    chk.addEventListener('change', () => {
+      pQty.value = chk.checked ? remaining : '';
+      pQty.dispatchEvent(new Event('input'));
+
+      if (chk.checked) {
+        // 勾選後自動送出
+        const saveBtn = $('#pSave');
+        const allBtns = $('#omBody').querySelectorAll('button, input, select');
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.textContent = '上傳中…';
+          saveBtn.style.opacity = '0.5';
+          saveBtn.style.cursor = 'not-allowed';
+        }
+        allBtns.forEach(el => { el.disabled = true; });
+        addOrderProgress();
+      }
+    });
     pQty.addEventListener('input', () => { chk.checked = (Number(pQty.value) >= remaining && remaining > 0); });
   }
 
