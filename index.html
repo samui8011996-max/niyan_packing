@@ -2804,7 +2804,15 @@ function openOrderEdit(o) {
       toast('已刪除');
     } catch (e) { toast(e.message, true); }
   });
-  $('#eSave').addEventListener('click', async () => {
+$('#eSave').addEventListener('click', async () => {
+    const saveBtn = $('#eSave');
+    const allBtns = $('#omBody').querySelectorAll('button, input, select, textarea');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '上傳中…';
+    saveBtn.style.opacity = '0.5';
+    saveBtn.style.cursor = 'not-allowed';
+    allBtns.forEach(el => { el.disabled = true; });
+
     try {
       await api('updateOrder', {
         id:       o.id,
@@ -2823,7 +2831,13 @@ function openOrderEdit(o) {
       currentOrder = state.orders.find(x => x.id === o.id);
       renderOrderModal();
       toast('已儲存');
-    } catch (e) { toast(e.message, true); }
+    } catch (e) {
+      toast(e.message, true);
+      allBtns.forEach(el => { el.disabled = false; });
+      saveBtn.textContent = '儲 存';
+      saveBtn.style.opacity = '';
+      saveBtn.style.cursor = '';
+    }
   });
 }
 
