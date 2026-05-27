@@ -1929,8 +1929,9 @@ if (vendorFilter === 'open') {
       if (colorHtml)            specs.push(colorHtml);
       if (safeText(o['大小']))  specs.push(`<span>${escapeHtml(safeText(o['大小']))}</span>`);
 
-      const pack = safeText(o['附加']);
-      const note = safeText(o['備註']);
+const pack    = safeText(o['附加']);
+const orderNo = safeText(o['訂單編號']);
+const note    = safeText(o['備註']);
 
       return `
         <div class="vendor-card ${isDone?'done':''} ${isUrgent?'urgent':''}" data-id="${o.id}">
