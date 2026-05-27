@@ -1388,7 +1388,10 @@ z-index: 10;
               </div>
             </div>
           </div>
-
+<div class="field">
+  <label>訂 單 編 號</label>
+  <input type="text" id="f_order_no" placeholder="選填，如 PO-2026-001">
+</div>
           <div class="field full">
             <label>備 註</label>
             <textarea id="f_note" placeholder="任何補充說明…"></textarea>
@@ -2485,7 +2488,7 @@ function getAdditionalText() {
 function resetVendorForm() {
   $('#f_date').value = todayStr();
   $('#f_due').value  = '';
-  ['#f_vendor','#f_item','#f_style','#f_size','#f_qty','#f_note'].forEach(s => $(s).value = '');
+ ['#f_vendor','#f_item','#f_style','#f_size','#f_qty','#f_order_no','#f_note'].forEach(s => $(s).value = '');
   selectedColors = [];
   $$('#colorGrid .color-chip').forEach(c => c.classList.remove('on'));
   $$('.chip').forEach(c => c.classList.remove('on'));
@@ -2517,6 +2520,7 @@ try {
       '大小':     $('#f_size').value,
       '數量':     $('#f_qty').value,
       '附加':     getAdditionalText(),
+      '訂單編號': $('#f_order_no').value,   
       '備註':     $('#f_note').value
     });
 
@@ -2811,6 +2815,7 @@ function openOrderEdit(o) {
       </div>
       <div class="field"><label>數量</label><input type="number" id="e_qty" value="${o['數量']||''}"></div>
       <div class="field full"><label>附加</label><input type="text" id="e_pack" value="${escapeAttr(safeText(o['附加']))}"></div>
+      <div class="field full"><label>訂單編號</label><input type="text" id="e_order_no" value="${escapeAttr(safeText(o['訂單編號']))}"></div>
       <div class="field full"><label>備註</label><textarea id="e_note">${escapeHtml(safeText(o['備註']))}</textarea></div>
     </div>
     <div class="btn-row split">
@@ -2871,6 +2876,7 @@ $('#eSave').addEventListener('click', async () => {
         '大小':    $('#e_size').value,
         '數量':    $('#e_qty').value,
         '附加':    $('#e_pack').value,
+        '訂單編號': $('#e_order_no').value,
         '備註':    $('#e_note').value
       });
       await loadAll();
