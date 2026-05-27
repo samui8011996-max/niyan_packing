@@ -1950,8 +1950,9 @@ if (vendorFilter === 'open') {
             </div>
             <div class="vc-progress-bar ${isDone?'complete':''}"><div style="width:${pct}%"></div></div>
           ` : ''}
-          ${pack ? `<div class="vc-pack">📦 ${escapeHtml(pack)}</div>` : ''}
-          ${note ? `<div class="vc-note">${escapeHtml(note)}</div>` : ''}
+${pack    ? `<div class="vc-pack">📦 ${escapeHtml(pack)}</div>` : ''}
+${orderNo ? `<div class="vc-note" style="color:var(--stamp-blue);font-size:12px;">🔖 ${escapeHtml(orderNo)}</div>` : ''}
+${note    ? `<div class="vc-note">${escapeHtml(note)}</div>` : ''}
         </div>
       `;
     }).join('');
