@@ -2590,8 +2590,9 @@ const note    = safeText(o['備註']);
       ${meta}<br>
       ${style?'款式：'+escapeHtml(style)+'　':''}${size?'大小：'+escapeHtml(size):''}
       ${colorHtml?'<br>顏色：'+colorHtml:''}
-      ${pack?'<br>📦 '+escapeHtml(pack):''}
-      ${note?'<br>📝 '+escapeHtml(note):''}
+${pack?'<br>📦 '+escapeHtml(pack):''}
+${orderNo?'<br>🔖 訂單編號：'+escapeHtml(orderNo):''}
+${note?'<br>📝 '+escapeHtml(note):''}
     </div>
   `;
 
