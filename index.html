@@ -2575,8 +2575,9 @@ function renderOrderModal() {
     o['交期'] ? `交期：${fmtDate(o['交期'])}` : ''
   ].filter(Boolean).join('　');
 
-  const pack = safeText(o['附加']);
-  const note = safeText(o['備註']);
+const pack    = safeText(o['附加']);
+const orderNo = safeText(o['訂單編號']);
+const note    = safeText(o['備註']);
   const style = safeText(o['款式']);
   const size = safeText(o['大小']);
 
