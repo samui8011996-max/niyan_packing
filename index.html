@@ -1648,10 +1648,9 @@ function escapeAttr(s) { return escapeHtml(s); }
 function colorOf(name) { return colorMap[name] || '#cccccc'; }
 function cssEscape(s)  { return String(s).replace(/"/g,'\\"'); }
 function safeText(v) {
-  // 過濾 #ERROR! 之類的試算表錯誤值
   if (v == null) return '';
   const s = String(v).trim();
-  if (!s || s.startsWith('#')) return '';
+  if (!s || /^#[A-Z\/!]+/.test(s)) return '';
   return s;
 }
 function isDone(v) {
@@ -1804,7 +1803,7 @@ ${isDone(rec['已完成'])
     card.addEventListener('click', (e) => {
       if (e.target.closest('[data-hide-pf]')) return;
       const platform = card.dataset.emptyPlatform;
-      openPlatformEdit(null, platform);
+      openPlatformEdit(null, platform, $('#p_date').value || todayStr());
     });
   });
 list.querySelectorAll('.pf-card').forEach(card => {
@@ -1846,7 +1845,7 @@ const targets = state.platforms.filter(p =>
   !safeText(p['備註'])
 );
   if (!targets.length) { toast('沒有可一鍵完成的項目', true); return; }
-  if (!confirm(`將標記 ${targets.length} 個平台為已完成（不含有備註原因者）?`)) return;
+ if (!confirm(`確定將 ${targets.length} 個平台標記為已完成（不含有備註原因者）？`)) return;
   const btn = $('#pfBulkDone');
   btn.disabled = true;
   const orig = btn.textContent;
@@ -1876,11 +1875,17 @@ function renderVendorBoard() {
   const hiddenCount = orders.length - visibleAll.length;
   orders = visibleAll;
 
-  if (vendorFilter === 'open') {
-    orders = orders.filter(o => doneOf(o.id) < (Number(o['數量']) || Infinity));
-  } else if (vendorFilter === 'done') {
-    orders = orders.filter(o => Number(o['數量']) > 0 && doneOf(o.id) >= Number(o['數量']));
-  }
+if (vendorFilter === 'open') {
+  orders = orders.filter(o => {
+    const qty = Number(o['數量']) || 0;
+    return !isDone(o['已完成']) && (qty === 0 || doneOf(o.id) < qty);
+  });
+} else if (vendorFilter === 'done') {
+  orders = orders.filter(o => {
+    const qty = Number(o['數量']) || 0;
+    return isDone(o['已完成']) || (qty > 0 && doneOf(o.id) >= qty);
+  });
+}
   if (vendorDate) {
     orders = orders.filter(o => fmtDate(o['下單日期']) === vendorDate);
   }
@@ -1982,8 +1987,16 @@ function renderHistoryVendor() {
     vendors.map(v => `<option ${v===cur?'selected':''}>${escapeHtml(v)}</option>`).join('');
 
   let orders = state.orders.slice();
-  if (status === 'open')   orders = orders.filter(o => !hiddenVendor.has(o.id) && doneOf(o.id) < (Number(o['數量']) || Infinity));
-  if (status === 'done')   orders = orders.filter(o => !hiddenVendor.has(o.id) && Number(o['數量']) > 0 && doneOf(o.id) >= Number(o['數量']));
+if (status === 'open') orders = orders.filter(o => {
+  if (hiddenVendor.has(o.id)) return false;
+  const qty = Number(o['數量']) || 0;
+  return !isDone(o['已完成']) && (qty === 0 || doneOf(o.id) < qty);
+});
+if (status === 'done') orders = orders.filter(o => {
+  if (hiddenVendor.has(o.id)) return false;
+  const qty = Number(o['數量']) || 0;
+  return isDone(o['已完成']) || (qty > 0 && doneOf(o.id) >= qty);
+});
   if (status === 'hidden') orders = orders.filter(o => hiddenVendor.has(o.id));
   if (dateF)    orders = orders.filter(o => fmtDate(o['下單日期']) === dateF);
   if (vendorF)  orders = orders.filter(o => safeText(o['廠商']) === vendorF);
@@ -1998,12 +2011,14 @@ function renderHistoryVendor() {
   $('#hisVendorCount').textContent = `共 ${orders.length} 筆`;
 
   // 取得容器（第一次把 table 換成 div）
-  let vContainer = document.getElementById('hisVendorContainer');
-  if (!vContainer) {
-    vContainer = document.createElement('div');
-    vContainer.id = 'hisVendorContainer';
-    $('#hisVendorTable').replaceWith(vContainer);
-  }
+let vContainer = document.getElementById('hisVendorContainer');
+if (!vContainer) {
+  vContainer = document.createElement('div');
+  vContainer.id = 'hisVendorContainer';
+  const tableEl = document.getElementById('hisVendorTable');
+  if (tableEl) tableEl.replaceWith(vContainer);
+  else document.querySelector('.his-card').appendChild(vContainer);
+}
 
   if (!orders.length) {
     vContainer.innerHTML = `<div class="his-empty">無資料</div>`;
@@ -2166,12 +2181,14 @@ function renderHistoryPlatform() {
   $('#hisPfCount').textContent = `共 ${items.length} 筆`;
 
   // 取得容器
-  let pfContainer = document.getElementById('hisPfContainer');
-  if (!pfContainer) {
-    pfContainer = document.createElement('div');
-    pfContainer.id = 'hisPfContainer';
-    $('#hisPlatformTable').replaceWith(pfContainer);
-  }
+let pfContainer = document.getElementById('hisPfContainer');
+if (!pfContainer) {
+  pfContainer = document.createElement('div');
+  pfContainer.id = 'hisPfContainer';
+  const tableEl = document.getElementById('hisPlatformTable');
+  if (tableEl) tableEl.replaceWith(pfContainer);
+  else document.querySelectorAll('.his-card')[1].appendChild(pfContainer);
+}
 
   if (!items.length) {
     pfContainer.innerHTML = `<div class="his-empty">無資料</div>`;
@@ -2506,15 +2523,15 @@ try {
         '包貨人員': '其他'
       });
       toast('已送出並標記全部完成');
-    } else {
+  } else {
       toast('送出成功');
     }
-
     resetVendorForm();
     await loadAll();
     switchTab('board');
   } catch (e) { toast(e.message, true); }
-  finally { btn.disabled = false; btn.textContent = orig; }}
+  finally { btn.disabled = false; btn.textContent = orig; }
+}
 $('#btnSubmit').addEventListener('click', submitVendor);
 $('#btnReset').addEventListener('click', resetVendorForm);
 
@@ -3032,11 +3049,10 @@ $('#pSubmit').addEventListener('click', async () => {
 });
 
 /* ----- 平台單編輯 Modal ----- */
-function openPlatformEdit(rec, platformName) {
-  // rec 可能是 null（新增模式），此時用 platformName + 今天日期建立
+function openPlatformEdit(rec, platformName, overrideDate) {
   const isNew = !rec;
   const platform = isNew ? platformName : rec['平台'];
-  const date = isNew ? todayStr() : fmtDate(rec['日期']);
+  const date = isNew ? (overrideDate || $('#p_date').value || todayStr()) : fmtDate(rec['日期']);
 
   $('#pfmTitle').textContent = (isNew ? '新 增 ' : '編 輯 ') + platform;
   const options = PLATFORM_LOGISTICS[platform] || [];
