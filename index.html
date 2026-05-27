@@ -2691,8 +2691,14 @@ async function addOrderProgress() {
   const staff = $('#pStaff').value;
   if (!qty || qty <= 0) { toast('請輸入數量', true); return; }
   if (!staff)            { toast('請選包貨人員', true); return; }
+
+  // 鎖住所有按鈕
+  const allBtns = $('#omBody').querySelectorAll('button, input, select');
+  allBtns.forEach(el => { el.disabled = true; });
+  const saveBtn = $('#pSave');
+  if (saveBtn) { saveBtn.textContent = '上傳中…'; }
+
   try {
-    // 物流預設黑貓
     const logi = $('#pLogi').value || '黑貓';
     await api('addProgress', {
       '訂單id':   o.id,
@@ -2706,7 +2712,12 @@ async function addOrderProgress() {
     const updated = state.orders.find(x => x.id === o.id);
     if (updated) { currentOrder = updated; renderOrderModal(); }
     toast('已記入 +' + qty);
-  } catch (e) { toast(e.message, true); }
+  } catch (e) {
+    toast(e.message, true);
+    // 失敗時解鎖
+    allBtns.forEach(el => { el.disabled = false; });
+    if (saveBtn) { saveBtn.textContent = '記 入'; }
+  }
 }
 
 function openOrderEdit(o) {
