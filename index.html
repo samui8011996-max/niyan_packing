@@ -1540,7 +1540,7 @@ z-index: 10;
       <div class="form-grid">
         <div class="field full">
           <label>平 台 名 稱</label>
-          <input type="text" id="pmName" placeholder="例：露天、MOMO…">
+          <input type="text" id="pmName" placeholder="輸入平台名稱">
         </div>
         <div class="field full">
           <label>物 流 選 項（逗號分隔，留空則只填總件數）</label>
@@ -3245,13 +3245,11 @@ const numButtons = `
     <div class="pf-form-head">
       <span class="pf-name" style="color:var(--ink-soft);font-size:14px;">＋ 新增平台</span>
     </div>
-    <div style="display:flex;gap:8px;align-items:flex-end;">
-      <div class="field" style="flex:1;">
-        <label>平 台 名 稱</label>
-        <input type="text" id="inline_pm_name" placeholder="例：露天、MOMO…">
-      </div>
-      <button type="button" class="btn primary" id="inline_pm_add" style="padding:8px 18px;white-space:nowrap;">新 增</button>
+<div class="field">
+      <label>平 台 名 稱</label>
+      <input type="text" id="inline_pm_name" placeholder="例：露天、MOMO…">
     </div>
+    <button type="button" class="btn primary" id="inline_pm_add" style="width:100%;margin-top:10px;">新 增</button>
   </div>
   </div>`;
 
