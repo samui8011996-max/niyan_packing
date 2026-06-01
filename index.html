@@ -1354,17 +1354,21 @@ z-index: 10;
       ＋ 新 增 品 項
     </button>
 
-    <!-- 整張單備註 -->
+<!-- 整張單備註 -->
     <div class="field full" style="margin-top:20px;">
       <label>備 註</label>
       <textarea id="f_note" placeholder="任何補充說明…"></textarea>
+    </div>
+
+    <div class="qty-check-row" style="margin-top:16px;">
+      <input type="checkbox" id="f_all_done">
+      <label for="f_all_done">送出後直接標記為完成訂單（所有品項視為已完成）</label>
     </div>
 
     <div class="btn-row">
       <button class="btn ghost" id="btnReset">清 空</button>
       <button class="btn primary" id="btnSubmit">送 出</button>
     </div>
-  </div>
 </section>
 
 
@@ -2558,7 +2562,9 @@ function resetVendorForm() {
   $('#f_due').value      = '';
   $('#f_vendor').value   = '';
   $('#f_order_no').value = '';
-  $('#f_note').value     = '';
+$('#f_note').value     = '';
+  const allDoneChk = $('#f_all_done');
+  if (allDoneChk) allDoneChk.checked = false;
   itemCounter = 0;
   const list = $('#f_items_list');
   list.innerHTML = '';
@@ -2581,9 +2587,9 @@ async function submitVendor() {
   btn.disabled = true;
   const orig = btn.textContent;
   btn.textContent = '送 出 中…';
-  try {
+try {
   const firstItem = items[0] || {};
-await api('addOrder', {
+const res = await api('addOrder', {
   '下單日期':  $('#f_date').value,
   '交期':      $('#f_due').value,
   '廠商':      $('#f_vendor').value,
@@ -2597,7 +2603,27 @@ await api('addOrder', {
   '備註':      $('#f_note').value,
   'items':     items
 });
-    toast('送出成功');
+
+    const allDone = $('#f_all_done').checked;
+    if (res && res.id && allDone) {
+      const today = todayStr();
+      for (const it of items) {
+        if (!it['品項']) continue;
+        const q = Number(it['數量']) || 0;
+        if (q <= 0) continue;              // 數量 0 的品項本來就視為完成，免補
+        await api('addProgress', {
+          '訂單id':   res.id,
+          '完成日期': today,
+          '完成數量': q,
+          '總箱數':   '',
+          '物流公司': '',
+          '包貨人員': '建單完成',
+          '備註': `${safeText(it['品項'])}【${safeText(it['大小'])}】 ${safeText(it['顏色'])} ${safeText(it['款式'])}`.trim()
+        });
+      }
+    }
+
+    toast(allDone ? '已送出並標記完成' : '送出成功');
     resetVendorForm();
     await loadAll();
     switchTab('board');
