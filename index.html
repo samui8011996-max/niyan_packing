@@ -793,54 +793,8 @@ z-index: 10;
     margin-bottom: 4px;
     letter-spacing: 1px;
   }
-  .vc-spec {
-    display: flex; flex-wrap: wrap; gap: 4px 8px;
-    font-size: 13px;
-    color: var(--ink-soft);
-    margin-bottom: 6px;
-    align-items: center;
-  }
-  .vc-spec .color-tag {
-    display: inline-flex; align-items: center; gap: 4px;
-  }
-  .vc-spec .swatch {
-    width: 12px; height: 12px;
-    border-radius: 50%;
-    border: 1px solid rgba(0,0,0,0.15);
-    display: inline-block;
-  }
-  .vc-qty {
-    font-family: 'Shippori Mincho', serif;
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    margin: 6px 0 4px;
-  }
-  .vc-qty .done-num { color: var(--stamp-blue); }
-  .vc-qty .slash { color: var(--line-dark); margin: 0 4px; }
-  .vc-progress-bar {
-    height: 4px;
-    background: var(--paper-2);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-bottom: 8px;
-  }
-  .vc-progress-bar > div {
-    height: 100%;
-    background: var(--stamp-blue);
-    transition: width 0.3s;
-  }
-  .vc-progress-bar.complete > div { background: var(--stamp-red); }
- .vc-pack {
-  font-family: 'Noto Sans TC', 'Klee One', serif;
-  font-size: 12px;
-  color: var(--ink-soft);
-  background: var(--paper-2);
-  padding: 5px 8px;
-  border-radius: 6px;
-  margin: 4px 0;
-  border-left: 2px solid var(--accent-soft);
-}
+
+
 .vc-note {
   font-family: 'Noto Sans TC', 'Klee One', serif;
   font-size: 13px;
@@ -1721,17 +1675,7 @@ function doneOf(orderId) {
   return state.progress.filter(p => p['訂單id'] === orderId)
     .reduce((s, p) => s + (Number(p['完成數量']) || 0), 0);
 }
-function itemMatchStr(it) {
-  const 品項 = safeText(it['品項']);
-  const 大小 = safeText(it['大小']);
-  const 顏色 = safeText(it['顏色']);
-  const 款式 = safeText(it['款式']);
-  // 新格式：品項【大小】顏色 款式
-  const newFmt = `${品項}【${大小}】 ${顏色} ${款式}`.trim();
-  // 舊格式：品項 款式 大小（向下相容舊紀錄）
-  const oldFmt = `${品項} ${款式} ${大小}`.trim();
-  return newFmt;
-}
+
 function itemDoneCount(orderId, it) {
   const 品項 = safeText(it['品項']);
   const 大小 = safeText(it['大小']);
@@ -2002,7 +1946,6 @@ const itColors = String(it['顏色'] || '').split(/[、,，]/).map(c => c.trim()
             ${o['交期'] ? `<span class="due">／ 交期 ${fmtDate(o['交期'])}</span>` : ''}
           </div>
           ${safeText(o['廠商']) ? `<div class="vc-vendor">${escapeHtml(safeText(o['廠商']))}</div>` : ''}
-          ${!itList ? `<div class="vc-item">${escapeHtml(safeText(o['品項']) || '（未指定）')}</div>` : ''}
           ${itemsHtml}
           ${orderNo ? `<div class="vc-note" style="color:var(--stamp-blue);font-size:12px;">🔖 ${escapeHtml(orderNo)}</div>` : ''}
           ${note ? `<div class="vc-note">${escapeHtml(note)}</div>` : ''}
