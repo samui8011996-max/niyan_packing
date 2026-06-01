@@ -1360,9 +1360,13 @@ z-index: 10;
       <textarea id="f_note" placeholder="任何補充說明…"></textarea>
     </div>
 
-    <div class="qty-check-row" style="margin-top:16px;">
+  <div class="qty-check-row" style="margin-top:16px;">
       <input type="checkbox" id="f_all_done">
       <label for="f_all_done">送出後直接標記為完成訂單（所有品項視為已完成）</label>
+    </div>
+    <div class="field" id="f_done_staff_wrap" style="display:none;margin-top:10px;max-width:220px;">
+      <label>出 貨 人 員</label>
+      <select id="f_done_staff"><option value="">—</option></select>
     </div>
 
     <div class="btn-row">
@@ -2565,6 +2569,10 @@ function resetVendorForm() {
 $('#f_note').value     = '';
   const allDoneChk = $('#f_all_done');
   if (allDoneChk) allDoneChk.checked = false;
+  const doneStaffWrap = $('#f_done_staff_wrap');
+  if (doneStaffWrap) doneStaffWrap.style.display = 'none';
+  const doneStaffSel = $('#f_done_staff');
+  if (doneStaffSel) doneStaffSel.value = '';
   itemCounter = 0;
   const list = $('#f_items_list');
   list.innerHTML = '';
@@ -2579,9 +2587,14 @@ function renderSelects() {
 async function submitVendor() {
   if (!API_URL) { toast('請先設定 API 網址', true); return; }
   if (!$('#f_date').value) { toast('請選日期', true); return; }
-  const items = collectItems();
+const items = collectItems();
   if (!items.some(it => it['品項'])) {
     toast('請至少填一個品項', true); return;
+  }
+  const allDone   = $('#f_all_done').checked;
+  const doneStaff = $('#f_done_staff') ? $('#f_done_staff').value : '';
+  if (allDone && !doneStaff) {
+    toast('請選擇出貨人員', true); return;
   }
   const btn = $('#btnSubmit');
   btn.disabled = true;
@@ -2605,19 +2618,19 @@ const res = await api('addOrder', {
 });
 
     const allDone = $('#f_all_done').checked;
-    if (res && res.id && allDone) {
+if (res && res.id && allDone) {
       const today = todayStr();
       for (const it of items) {
         if (!it['品項']) continue;
         const q = Number(it['數量']) || 0;
-        if (q <= 0) continue;              // 數量 0 的品項本來就視為完成，免補
+        if (q <= 0) continue;
         await api('addProgress', {
           '訂單id':   res.id,
           '完成日期': today,
           '完成數量': q,
           '總箱數':   '',
-          '物流公司': '',
-          '包貨人員': '建單完成',
+          '物流公司': '黑貓',
+          '包貨人員': doneStaff,
           '備註': `${safeText(it['品項'])}【${safeText(it['大小'])}】 ${safeText(it['顏色'])} ${safeText(it['款式'])}`.trim()
         });
       }
@@ -2640,6 +2653,18 @@ $('#btnReset').addEventListener('click', resetVendorForm);
 $('#btnAddItem').addEventListener('click', () => {
   $('#f_items_list').appendChild(createItemRow());
 });
+
+
+// 建單完成：人員下拉填充 + 勾選才顯示
+(function(){
+  const sel = document.getElementById('f_done_staff');
+  if (sel) sel.innerHTML = '<option value="">—</option>' + STAFFS.map(s => `<option>${s}</option>`).join('');
+  const chk = document.getElementById('f_all_done');
+  const wrap = document.getElementById('f_done_staff_wrap');
+  if (chk && wrap) {
+    chk.addEventListener('change', () => { wrap.style.display = chk.checked ? 'block' : 'none'; });
+  }
+})();
 /* ============ 新增選項 ============ */
 let addCategory = '';
 function openAddModal(cat) {
