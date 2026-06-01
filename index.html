@@ -1653,10 +1653,13 @@ async function api(action, payload = {}) {
   return data.data;
 }
 
+let loadSeq = 0;
 async function loadAll() {
   if (!API_URL) return;
+  const mySeq = ++loadSeq;
   try {
     const main = await api('readAll');
+    if (mySeq !== loadSeq) return;   // 已有更新的請求送出，丟棄這個過期結果
     state.orders    = main.orders    || [];
     state.progress  = main.progress  || [];
     state.platforms = main.platforms || [];
