@@ -1443,6 +1443,7 @@ z-index: 10;
           <div>
             <button class="btn small" id="cfgSave">儲 存</button>
             <button class="btn small ghost" id="cfgTest">測 試 連 線</button>
+            <button class="btn small ghost" id="cfgClear">清 除</button>
           </div>
           <div class="status" id="cfgStatus"></div>
           <p style="margin-top: 20px; font-size: 12px;">資料每 20 秒自動同步；新增/修改後立即同步。</p>
@@ -2849,9 +2850,9 @@ if (safeText(p['備註'])) {
   }
 
   // 刪除訂單移到左邊
-  html += `
+html += `
     <div class="btn-row split">
-      <button class="btn small danger" id="orderDel">刪除訂單</button>
+      <button class="btn small ghost" id="orderClose">關閉</button>
       <button class="btn small ghost"  id="orderEdit">編輯</button>
     </div>
   `;
@@ -2943,13 +2944,7 @@ const chk = $('#checkAll'), pQty = $('#pQty');
     });
   });
 
-  $('#orderDel').addEventListener('click', async () => {
-    if (!confirm('確定刪除此訂單？相關完成紀錄也會一併刪除。')) return;
-    try {
-      await api('deleteOrder', { id: o.id });
-      closeOrderModal(); await loadAll(); toast('已刪除');
-    } catch (e) { toast(e.message, true); }
-  });
+$('#orderClose').addEventListener('click', () => closeOrderModal());
 
   $('#orderEdit').addEventListener('click', () => openOrderEdit(o));
 }
@@ -3069,25 +3064,12 @@ function openOrderEdit(o) {
         <textarea id="e_note">${escapeHtml(safeText(o['備註']))}</textarea>
       </div>
     </div>
-    <div class="btn-row split">
-      <button class="btn small danger" id="eDel">刪除</button>
-      <div style="display:flex;gap:10px;">
-        <button class="btn small ghost" id="eBack">返回</button>
-        <button class="btn small primary" id="eSave">儲 存</button>
-      </div>
+<div class="btn-row split">
+      <button class="btn small ghost" data-close>關閉</button>
+      <button class="btn small primary" id="efSave">儲存</button>
     </div>
   `;
-  $('#eBack').addEventListener('click', () => renderOrderModal());
-  $('#eDel').addEventListener('click', async () => {
-    if (!confirm('確定刪除此訂單？相關完成紀錄也會一併刪除。')) return;
-    try {
-      await api('deleteOrder', { id: o.id });
-      closeOrderModal();
-      await loadAll();
-      toast('已刪除');
-    } catch (e) { toast(e.message, true); }
-  });
-$('#eSave').addEventListener('click', async () => {
+$('#efSave').addEventListener('click', async () => {
     const saveBtn = $('#eSave');
     const allBtns = $('#omBody').querySelectorAll('button, input, select, textarea');
     saveBtn.disabled = true;
@@ -3411,12 +3393,9 @@ function openPlatformEdit(rec, platformName, overrideDate) {
   $('#pfmBody').innerHTML = `
     <div class="form-grid">${detailHtml}</div>
     <div class="field" style="margin-top:12px;"><label>備註</label><textarea id="ef_note">${escapeHtml(isNew ? '' : safeText(rec['備註']))}</textarea></div>
-    <div class="btn-row split">
-      ${isNew ? '<span></span>' : '<button class="btn small danger" id="efDel">刪除</button>'}
-      <div style="display:flex;gap:10px;">
-        <button class="btn small ghost"  data-close>取消</button>
-        <button class="btn small primary" id="efSave">儲存</button>
-      </div>
+<div class="btn-row split">
+      <button class="btn small ghost" data-close>關閉</button>
+      <button class="btn small primary" id="efSave">儲存</button>
     </div>
   `;
   $('#pfModal').classList.add('show');
@@ -3455,17 +3434,7 @@ function openPlatformEdit(rec, platformName, overrideDate) {
     } catch (e) { toast(e.message, true); }
   });
 
-  if (!isNew) {
-    $('#efDel').addEventListener('click', async () => {
-      if (!confirm('確定刪除？')) return;
-      try {
-        await api('deletePlatform', { id: rec.id });
-        $('#pfModal').classList.remove('show');
-        await loadAll();
-        toast('已刪除');
-      } catch (e) { toast(e.message, true); }
-    });
-  }
+
 }
 
 /* ============ 分頁切換 ============ */
@@ -3523,10 +3492,9 @@ document.addEventListener('click', e => {
 
 /* ============ 設定 ============ */
 $('#cfgUrl').value = API_URL;
-$('#cfgSave').addEventListener('click', () => {
-  API_URL = $('#cfgUrl').value.trim();
-  localStorage.setItem(LS_URL, API_URL);
-  toast('已儲存'); loadAll();
+$('#cfgClear').addEventListener('click', () => {
+  $('#cfgUrl').value = '';
+  $('#cfgUrl').focus();
 });
 $('#cfgTest').addEventListener('click', async () => {
   const s = $('#cfgStatus');
