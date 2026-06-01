@@ -1197,6 +1197,16 @@ z-index: 10;
   .pf-inputs { grid-template-columns: 1fr; }
   .pf-inputs .pf-num-btn { flex: 0 1 auto; padding: 4px 14px; }
   .pf-inputs input { max-width: 100%; }
+  /* 手機：字體 16px 防止 iOS 點下拉時自動放大跳動 */
+  input[type="text"], input[type="number"], input[type="date"],
+  input[type="search"], input[type="tel"], input[type="email"],
+  select, textarea { font-size: 16px; }
+
+  /* 下拉加高，點擊區更好按 */
+  select { min-height: 46px; padding-top: 11px; padding-bottom: 11px; }
+
+  /* 廠商單改單欄，下拉框滿版最寬 */
+  #sec-vendor .form-grid { grid-template-columns: 1fr; }
 }
 .corner-settings {
   position: absolute;
@@ -2579,9 +2589,43 @@ $('#f_note').value     = '';
   list.appendChild(createItemRow());
 }
 
+function refreshItemRowOptions(div) {
+  const s = state.settings || {};
+  [['.fi-item', DEFAULT_ITEMS, s['品項']],
+   ['.fi-style', DEFAULT_STYLES, s['款式']],
+   ['.fi-size', DEFAULT_SIZES, s['大小']]].forEach(([sel, defaults, custom]) => {
+    const el = div.querySelector(sel);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">—</option>' +
+      mergeList(defaults, custom).map(v => `<option ${v===cur?'selected':''}>${escapeHtml(v)}</option>`).join('');
+  });
+  const colorWrap = div.querySelector('.fi-colors');
+  if (colorWrap) {
+    const selected = colorWrap.querySelector('.color-chip.on')?.dataset.color || '';
+    colorWrap.innerHTML = mergeList(DEFAULT_COLORS, s['顏色']).map(c => `
+      <div class="color-chip ${selected===c?'on':''}" data-color="${escapeAttr(c)}">
+        <span class="swatch" style="background:${colorOf(c)}"></span>
+        <span>${escapeHtml(c)}</span>
+      </div>`).join('') + '<button type="button" class="color-add" data-add="顏色">+ 新增</button>';
+    colorWrap.querySelectorAll('.color-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const wasOn = chip.classList.contains('on');
+        colorWrap.querySelectorAll('.color-chip').forEach(c => c.classList.remove('on'));
+        if (!wasOn) chip.classList.add('on');
+      });
+    });
+    colorWrap.querySelector('.color-add')?.addEventListener('click', () => { window._addTargetRow = div; openAddModal('顏色'); });
+  }
+}
+
 function renderSelects() {
   const s = state.settings || {};
+  // 使用者正在填廠商單時跳過自動重建，避免打斷輸入或關掉下拉
+  const vsec = $('#sec-vendor');
+  if (vsec && vsec.contains(document.activeElement)) return;
   fillSelect($('#f_vendor'), mergeList(DEFAULT_VENDORS, s['廠商']));
+  document.querySelectorAll('#f_items_list .item-row').forEach(refreshItemRowOptions);
 }
 
 async function submitVendor() {
@@ -2652,6 +2696,11 @@ $('#btnSubmit').addEventListener('click', submitVendor);
 $('#btnReset').addEventListener('click', resetVendorForm);
 $('#btnAddItem').addEventListener('click', () => {
   $('#f_items_list').appendChild(createItemRow());
+  div.querySelector('.color-add').addEventListener('click', () => { window._addTargetRow = div; openAddModal('顏色'); });
+    // 下拉新增按鈕
+  div.querySelectorAll('.add-btn[data-add]').forEach(b => {
+    b.addEventListener('click', e => { e.preventDefault(); window._addTargetRow = div; openAddModal(b.dataset.add); });
+  });
 });
 
 
@@ -2741,10 +2790,17 @@ $('#amSave').addEventListener('click', async () => {
       localStorage.setItem(LS_COLORS, JSON.stringify(colorMap));
     }
     renderSelects();
-  
-    const map = { '廠商':'#f_vendor', '品項':'#f_item', '款式':'#f_style', '大小':'#f_size' };
-    const sel = map[addCategory];
-    if (sel) $(sel).value = val;
+    const target = window._addTargetRow;
+    if (target) {
+      if (addCategory === '品項') { const el = target.querySelector('.fi-item'); if (el) el.value = val; }
+      else if (addCategory === '款式') { const el = target.querySelector('.fi-style'); if (el) el.value = val; }
+      else if (addCategory === '大小') { const el = target.querySelector('.fi-size'); if (el) el.value = val; }
+      else if (addCategory === '顏色') {
+        target.querySelectorAll('.color-chip').forEach(c => c.classList.toggle('on', c.dataset.color === val));
+      }
+      window._addTargetRow = null;
+    }
+    if (addCategory === '廠商') $('#f_vendor').value = val;
     $('#addModal').classList.remove('show');
     toast('已新增');
   } catch (e) { toast(e.message, true); }
