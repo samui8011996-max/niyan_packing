@@ -3606,6 +3606,16 @@ $('#cfgClear').addEventListener('click', () => {
   $('#cfgUrl').value = '';
   $('#cfgUrl').focus();
 });
+$('#cfgSave').addEventListener('click', () => {
+  const url = $('#cfgUrl').value.trim();
+  API_URL = url;
+  localStorage.setItem(LS_URL, url);
+  const s = $('#cfgStatus');
+  s.textContent = '✓ 已儲存'; s.className = 'status ok';
+  toast('已儲存');
+  if (pollTimer) clearInterval(pollTimer);
+  if (API_URL) { loadAll(); pollTimer = setInterval(loadAll, 10000); }
+});
 $('#cfgTest').addEventListener('click', async () => {
   const s = $('#cfgStatus');
   s.textContent = '測試中…'; s.className = 'status';
