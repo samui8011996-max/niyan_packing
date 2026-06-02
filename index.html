@@ -466,6 +466,16 @@ html, body {
     border-left-color: var(--tape-blue);
     background: #fefcf5;
   }
+
+.pf-form-card[data-platform="未出貨"],
+.pf-form-card[data-platform="未出貨"].has-data {
+  border-left-color: var(--stamp-red);
+}
+
+.pf-form-card[data-platform="補寄"],
+.pf-form-card[data-platform="補寄"].has-data {
+  border-left-color: var(--pf-info, #a7b8ab);
+}
   .pf-form-head {
     display: flex; align-items: center; gap: 10px;
     margin-bottom: 8px;
@@ -1188,6 +1198,35 @@ z-index: 10;
     font-family: 'Caveat', cursive;
     font-size: 18px;
   }
+.logi-summary {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: var(--paper-2);
+  border-radius: 8px;
+  border: 1.5px dashed var(--line-dark);
+}
+.logi-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+.logi-chip .logi-name {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 14px; letter-spacing: 2px; color: var(--ink-soft);
+}
+.logi-chip .logi-num {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 22px; font-weight: 700; color: var(--ink);
+  min-width: 22px; text-align: center;
+}
+.logi-chip.logi-blackcat { background: var(--ink); border-color: var(--ink); }
+.logi-chip.logi-blackcat .logi-name { color: var(--paper-2); }
+.logi-chip.logi-blackcat .logi-num { color: #fff; }
+.logi-chip.logi-cvs { background: var(--tape-blue); border-color: #8fb3c4; }
+.logi-chip.logi-cvs .logi-name { color: var(--ink); }
 @media (max-width: 600px) {
   .banner h1 { font-size: 26px; letter-spacing: 4px; }
   .tab { padding: 6px 12px; font-size: 12px; }
@@ -1260,13 +1299,25 @@ z-index: 10;
 
     <!-- 公告 -->
     <section class="section active" id="sec-board">
+ <div class="card" id="unsentCard" style="display:none;">
+        <span class="tape t-pink">pending ✦ 未 出 貨</span>
+        <div class="card-title">
+          <span class="dot"></span>
+          <span>未 出 貨</span>
+        </div>
+        <div class="pf-grid" id="unsentList"></div>
+      </div>
+
+
       <div class="card">
         <span class="tape t-cream">today ✦ 今 日 平 台 單</span>
         <div class="card-title">
           <span class="dot"></span>
           <span>今 日 物 流 平 台</span>
-          <span style="margin-left:auto;font-size:12px;color:var(--ink-soft);" id="todayDateLabel"></span>
+        <span style="margin-left:auto;font-size:12px;color:var(--ink-soft);" id="todayDateLabel"></span>
         </div>
+
+        <div id="todayLogiSummary"></div>
 
         <div class="bulk-bar" id="pfBulkBar" style="display:none;">
           <span class="bulk-text">尚有 <b id="pfUndoneCount">0</b> 個平台未完成（不含已備註原因者）</span>
@@ -1277,8 +1328,10 @@ z-index: 10;
         <div class="hide-toggle" id="pfHiddenToggle"></div>
       </div>
 
+     
+
       <div class="card">
-        <span class="tape">vendor ✦ 廠 商 訂 購 單</span>
+        <span class="tape t-yellow">vendor ✦ 廠 商 訂 購 單</span>
         <div class="card-title">
           <span class="dot"></span>
           <span>廠 商 訂 單</span>
@@ -1405,7 +1458,8 @@ z-index: 10;
           <select id="hisPlatform">
             <option value="">全部</option>
             <option>Line禮物</option><option>蝦皮</option><option>Pinkoi</option>
-            <option>瑪黑</option><option>官網</option><option>博客來</option><option>酷澎</option>
+            <option>瑪黑</option><option>官網</option><option>博客來</option><option>MO+</option><option>酷澎</option>
+            <option>補寄</option><option>未出貨</option>
           </select>
           <label>狀態</label>
           <select id="hisPStatus">
@@ -1464,7 +1518,7 @@ z-index: 10;
             <button class="btn small ghost" id="cfgClear">清 除</button>
           </div>
           <div class="status" id="cfgStatus"></div>
-          <p style="margin-top: 20px; font-size: 12px;">資料每 10 秒自動同步；新增/修改後立即同步。</p>
+          <p style="margin-top: 20px; font-size: 12px;">資料每 20 秒自動同步；新增/修改後立即同步。</p>
           <p style="margin-top: 10px; font-size: 12px;">隱藏的卡片可在歷史紀錄中查看與恢復。</p>
         </div>
       </div>
@@ -1570,11 +1624,18 @@ const DEFAULT_PLATFORM_LOGISTICS = {
   '官網':     ['黑貓','超商'],
   '博客來':   ['黑貓'],
   'MO+':      ['黑貓','超商'],
-  '酷澎':     []
+  '酷澎':     [],
+  '補寄':     ['黑貓','超商'],
+  '未出貨':   ['黑貓','超商']
 };
 
-const DEFAULT_PLATFORM_ORDER = ['Line禮物','蝦皮','Pinkoi','瑪黑','官網','博客來','MO+','酷澎'];
+const DEFAULT_PLATFORM_ORDER = ['Line禮物','蝦皮','Pinkoi','瑪黑','官網','博客來','MO+','酷澎','補寄','未出貨'];
 
+// 未出貨在「今日平台」一般卡片清單中特殊處理，不走一般迴圈
+const SPECIAL_PLATFORMS = ['未出貨'];
+function getBoardPlatformOrder() {
+  return getPlatformOrder().filter(n => !SPECIAL_PLATFORMS.includes(n));
+}
 
 
 // 動態（從 localStorage 讀取自訂平台）
@@ -1697,7 +1758,114 @@ function doneOf(orderId) {
   return state.progress.filter(p => p['訂單id'] === orderId)
     .reduce((s, p) => s + (Number(p['完成數量']) || 0), 0);
 }
+/* 計算今日物流總數 */
+function computeTodayLogi() {
+  const today = todayStr();
+  let blackcat = 0, cvs = 0;
+  const others = {};
+  // 今日所有平台（未出貨不在此累計，改用扣除）
+  state.platforms.filter(p => fmtDate(p['日期']) === today && p['平台'] !== '未出貨').forEach(p => {
+    (Array.isArray(p['明細']) ? p['明細'] : []).forEach(d => {
+      const logi = String(d.物流 || '').trim();
+      const qty  = Number(d.件數) || 0;
+      if (!qty) return;
+      if (logi === '黑貓')             blackcat += qty;  // 含補寄黑貓；「蝦皮黑貓」名稱不等於「黑貓」故不計入
+      else if (logi.includes('超商'))  cvs += qty;       // 含蝦皮超商
+      else (others[logi] = (others[logi] || 0) + qty);   // 蝦皮一般、蝦皮黑貓、蝦皮隔日… 各自獨立
+    });
+  });
+  // 未出貨（今日、未完成）→ 從今日總數扣除
+ // 未出貨：
+  //  ① 建立日=今天且未完成 → 從今日扣除（今天少出了這些）
+  //  ② 完成日=今天（已完成）→ 加回今日（今天補出了這些）
+  state.platforms.filter(p => p['平台'] === '未出貨').forEach(p => {
+    const done = isDone(p['已完成']);
+    const createdToday = fmtDate(p['日期']) === today;
+    const doneToday    = fmtDate(p['完成日期']) === today;
 
+    let sign = 0;
+    if (!done && createdToday) sign = -1;   // 未完成：當天扣
+    else if (done && doneToday) sign = +1;  // 完成日當天：加回
+
+    if (!sign) return;
+    (Array.isArray(p['明細']) ? p['明細'] : []).forEach(d => {
+      const logi = String(d.物流 || '').trim();
+      const qty  = Number(d.件數) || 0;
+      if (logi === '黑貓')             blackcat += sign * qty;
+      else if (logi.includes('超商'))  cvs += sign * qty;
+    });
+  });
+  return { blackcat, cvs, others };
+}
+
+/* 今日物流總數摘要 */
+function renderTodayLogiSummary() {
+  const el = $('#todayLogiSummary');
+  if (!el) return;
+  const { blackcat, cvs, others } = computeTodayLogi();
+  const otherKeys = Object.keys(others).filter(k => others[k] > 0).sort();
+  let chips = `
+    <div class="logi-chip logi-blackcat"><span class="logi-name">黑貓</span><span class="logi-num">${blackcat}</span></div>
+    <div class="logi-chip logi-cvs"><span class="logi-name">超商</span><span class="logi-num">${cvs}</span></div>
+  `;
+  otherKeys.forEach(k => {
+    chips += `<div class="logi-chip"><span class="logi-name">${escapeHtml(k)}</span><span class="logi-num">${others[k]}</span></div>`;
+  });
+  el.innerHTML = `<div class="logi-summary">${chips}</div>`;
+}
+
+/* 未出貨卡片：不分天，未完成才顯示 */
+function renderUnsentBoard() {
+  const card = $('#unsentCard');
+  const list = $('#unsentList');
+  if (!card || !list) return;
+  const unsent = state.platforms
+    .filter(p => p['平台'] === '未出貨' && !isDone(p['已完成']))
+    .sort((a,b) => (a['日期']||'').localeCompare(b['日期']||''));
+
+  if (!unsent.length) { card.style.display = 'none'; list.innerHTML = ''; return; }
+  card.style.display = '';
+
+  list.innerHTML = unsent.map(rec => {
+    const detail = Array.isArray(rec['明細']) ? rec['明細'] : [];
+    const detailHtml = detail.filter(d => Number(d.件數) > 0).map(d =>
+      `<div class="pf-line"><span>${escapeHtml(d.物流||'件數')}</span><b>${d.件數||0}</b></div>`
+    ).join('') || '<div style="text-align:center;padding:4px 0;font-size:12px;">無件數</div>';
+    const note = safeText(rec['備註']);
+    return `
+       <div class="pf-card" style="border-left:4px solid var(--stamp-red);">
+        <div class="pf-platform"><span>未出貨</span>
+          <span class="pf-tag" style="background:var(--accent);">${fmtDate(rec['日期'])||''}</span>
+        </div>
+        <div class="pf-details">${detailHtml}</div>
+        ${note ? `<div style="font-family:'Noto Sans TC','Klee One',serif;font-size:12px;color:var(--stamp-red);border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
+        <div class="pf-actions">
+          <button class="btn small primary" data-unsent-done="${rec.id}">已出貨完成 ✓</button>
+          <button class="btn small ghost" data-unsent-del="${rec.id}">刪除</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-unsent-done]').forEach(b => {
+    b.addEventListener('click', async () => {
+      try {
+        await api('updatePlatform', { id: b.dataset.unsentDone, '已完成': true, '完成日期': todayStr() });
+        toast('已標記出貨完成');
+        await loadAll();
+      } catch (err) { toast(err.message, true); }
+    });
+  });
+  list.querySelectorAll('[data-unsent-del]').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('確定刪除此未出貨紀錄？')) return;
+      try {
+        await api('deletePlatform', { id: b.dataset.unsentDel });
+        toast('已刪除');
+        await loadAll();
+      } catch (err) { toast(err.message, true); }
+    });
+  });
+}
 function itemDoneCount(orderId, it) {
   const 品項 = safeText(it['品項']);
   const 大小 = safeText(it['大小']);
@@ -1737,13 +1905,16 @@ function renderPlatformBoard() {
   const list = $('#pfList');
   const today = todayStr();
 
-  const todayItems = state.platforms.filter(p => fmtDate(p['日期']) === today);
+  renderTodayLogiSummary();
+  renderUnsentBoard();
+
+  const todayItems = state.platforms.filter(p => fmtDate(p['日期']) === today && p['平台'] !== '未出貨');
   const byPlatform = {};
   todayItems.forEach(p => { byPlatform[p['平台']] = p; });
 
   // 計算未完成且無備註者（可以一鍵完成的）
   let undoneCanBulk = 0;
-  getPlatformOrder().forEach(name => {
+  getBoardPlatformOrder().forEach(name => {
     const rec = byPlatform[name];
     if (rec && !isDone(rec['已完成'])) {
       const note = safeText(rec['備註']);
@@ -1758,11 +1929,11 @@ function renderPlatformBoard() {
     bulkBar.style.display = 'none';
   }
 
-  const visibleNames = getPlatformOrder().filter(n => {
+  const visibleNames = getBoardPlatformOrder().filter(n => {
     if (!hiddenPf.has(n + '|' + today)) return true;
     return false;
   });
-  const hiddenCount = getPlatformOrder().length - visibleNames.length;
+  const hiddenCount = getBoardPlatformOrder().length - visibleNames.length;
 
   if (visibleNames.length === 0) {
     list.innerHTML = '<div class="empty" style="grid-column:1/-1;">所有平台已隱藏</div>';
@@ -1815,8 +1986,8 @@ ${isDone(rec['已完成'])
   const toggle = $('#pfHiddenToggle');
   if (hiddenCount > 0) {
     toggle.innerHTML = `<button id="pfShowHidden">顯示已隱藏的 ${hiddenCount} 個</button>`;
-    $('#pfShowHidden').addEventListener('click', () => {
-      getPlatformOrder().forEach(n => hiddenPf.delete(n + '|' + today));
+   $('#pfShowHidden').addEventListener('click', () => {
+      getBoardPlatformOrder().forEach(n => hiddenPf.delete(n + '|' + today));
       saveHidden();
       renderPlatformBoard();
     });
@@ -1868,6 +2039,7 @@ $('#pfBulkDone').addEventListener('click', async () => {
   const today = todayStr();
 const targets = state.platforms.filter(p =>
   fmtDate(p['日期']) === today &&
+  p['平台'] !== '未出貨' &&
   !isDone(p['已完成']) &&
   !safeText(p['備註'])
 );
@@ -3225,7 +3397,8 @@ function renderPlatformForm(force) {
 
   area.innerHTML = '<div class="pf-form">' + getPlatformOrder().map(name => {
     const opts     = getPlatformLogistics()[name] || [];
-    const existing = todayRecs[name];
+    // 未出貨每次送出都新增一筆，故表單永遠空白、不回填
+    const existing = (name === '未出貨') ? null : todayRecs[name];
     const map      = {};
     if (existing && Array.isArray(existing['明細'])) {
       existing['明細'].forEach(d => { map[d.物流] = d.件數 || 0; });
@@ -3455,8 +3628,11 @@ $('#pSubmit').addEventListener('click', async () => {
   try {
     let added = 0, updated = 0;
     for (const item of items) {
-      const exist = state.platforms.find(p => fmtDate(p['日期']) === date && p['平台'] === item.平台);
       const note  = item.備註 || globalNote;
+      // 未出貨永遠新增（可多筆、跨日保留），其餘平台維持每日覆蓋
+      const exist = item.平台 === '未出貨'
+        ? null
+        : state.platforms.find(p => fmtDate(p['日期']) === date && p['平台'] === item.平台);
       if (exist) {
         await api('updatePlatform', { id: exist.id, '明細': item.明細, '總件數': item.總件數, '備註': note });
         updated++;
@@ -3494,53 +3670,21 @@ function openPlatformEdit(rec, platformName, overrideDate) {
   } else {
     detailHtml = options.map(opt => `
       <div class="field">
-        <label>${opt}</label>
+        <label>${opt}${opt==='黑貓'?'':''}</label>
         <input type="number" class="ef-logi" data-logi="${escapeAttr(opt)}" value="${map[opt]||''}">
       </div>
     `).join('');
   }
 
-  const currentDone = !isNew && isDone(rec['已完成']);
-
   $('#pfmBody').innerHTML = `
     <div class="form-grid">${detailHtml}</div>
     <div class="field" style="margin-top:12px;"><label>備註</label><textarea id="ef_note">${escapeHtml(isNew ? '' : safeText(rec['備註']))}</textarea></div>
-    ${!isNew ? `
-    <div style="margin-top:14px;padding:10px 12px;background:var(--paper-2);border-radius:8px;border-left:3px solid ${currentDone ? '#8aab74' : 'var(--accent)'};display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <span style="font-family:'Klee One',serif;font-size:13px;color:var(--ink-soft);">完成狀態</span>
-      <span style="font-family:'Shippori Mincho',serif;font-size:14px;font-weight:700;color:${currentDone ? '#5b8c5a' : 'var(--stamp-red)'};">${currentDone ? '✓ 已完成' : '○ 未完成'}</span>
-      <button class="btn small ${currentDone ? 'ghost' : 'success'}" id="efToggleDone" style="margin-left:auto;">
-        ${currentDone ? '取消完成' : '標記完成 ✓'}
-      </button>
-    </div>` : ''}
-    <div class="btn-row split">
+<div class="btn-row split">
       <button class="btn small ghost" data-close>關閉</button>
       <button class="btn small primary" id="efSave">儲存</button>
     </div>
   `;
   $('#pfModal').classList.add('show');
-
-  // 標記/取消完成
-  document.getElementById('efToggleDone')?.addEventListener('click', async () => {
-    const btn = document.getElementById('efToggleDone');
-    const willDone = !currentDone;
-    btn.disabled = true;
-    btn.textContent = '處理中…';
-    try {
-      await api('updatePlatform', {
-        id: rec.id,
-        '已完成': willDone,
-        '完成日期': willDone ? todayStr() : ''
-      });
-      $('#pfModal').classList.remove('show');
-      await loadAll();
-      toast(willDone ? '已標記完成' : '已取消完成');
-    } catch (e) {
-      toast(e.message, true);
-      btn.disabled = false;
-      btn.textContent = willDone ? '標記完成 ✓' : '取消完成';
-    }
-  });
 
   $('#efSave').addEventListener('click', async () => {
     let detail = [], total = 0;
@@ -3575,6 +3719,8 @@ function openPlatformEdit(rec, platformName, overrideDate) {
       toast(isNew ? '已新增' : '已儲存');
     } catch (e) { toast(e.message, true); }
   });
+
+
 }
 
 /* ============ 分頁切換 ============ */
@@ -3635,16 +3781,6 @@ $('#cfgUrl').value = API_URL;
 $('#cfgClear').addEventListener('click', () => {
   $('#cfgUrl').value = '';
   $('#cfgUrl').focus();
-});
-$('#cfgSave').addEventListener('click', () => {
-  const url = $('#cfgUrl').value.trim();
-  API_URL = url;
-  localStorage.setItem(LS_URL, url);
-  const s = $('#cfgStatus');
-  s.textContent = '✓ 已儲存'; s.className = 'status ok';
-  toast('已儲存');
-  if (pollTimer) clearInterval(pollTimer);
-  if (API_URL) { loadAll(); pollTimer = setInterval(loadAll, 10000); }
 });
 $('#cfgTest').addEventListener('click', async () => {
   const s = $('#cfgStatus');
