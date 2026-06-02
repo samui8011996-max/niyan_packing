@@ -1833,7 +1833,7 @@ function renderUnsentBoard() {
     ).join('') || '<div style="text-align:center;padding:4px 0;font-size:12px;">無件數</div>';
     const note = safeText(rec['備註']);
     return `
-       <div class="pf-card" style="border-left:4px solid var(--stamp-red);">
+       <div class="pf-card" data-unsent-id="${rec.id}" style="border-left:4px solid var(--stamp-red);cursor:pointer;">
         <div class="pf-platform"><span>未出貨</span>
           <span class="pf-tag" style="background:var(--accent);">${fmtDate(rec['日期'])||''}</span>
         </div>
@@ -1863,6 +1863,14 @@ function renderUnsentBoard() {
         toast('已刪除');
         await loadAll();
       } catch (err) { toast(err.message, true); }
+    });
+  });
+  // 點卡片本身 → 編輯（避開按鈕）
+  list.querySelectorAll('[data-unsent-id]').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;   // 點到完成/刪除不觸發編輯
+      const rec = state.platforms.find(x => x.id === card.dataset.unsentId);
+      if (rec) openPlatformEdit(rec);
     });
   });
 }
@@ -2171,6 +2179,7 @@ const itColors = String(it['顏色'] || '').split(/[、,，]/).map(c => c.trim()
   list.querySelectorAll('.vendor-card').forEach(c => {
     c.addEventListener('click', () => openOrderModal(c.dataset.id));
   });
+  
 }
 
 /* ----- 歷史：廠商單（深色條列） ----- */
@@ -3386,8 +3395,15 @@ $('#efSave').addEventListener('click', async () => {
 /* ============ 平台單表單 ============ */
 function renderPlatformForm(force) {
   const area      = $('#p_all_platforms');
-  // 打字時跳過自動重建；force=true 時強制重建（新增/刪除平台用）
-  if (!force && area && area.contains(document.activeElement)) return;
+  // force=true 一律重建（手動清空/新增刪除平台用）
+  if (!force && area) {
+    // ① 焦點在表單內 → 跳過
+    if (area.contains(document.activeElement)) return;
+    // ② 表單裡有任何件數或備註已填 → 跳過，避免自動同步清掉正在填的資料
+    const hasInput = Array.from(area.querySelectorAll('.pf-input, .pf-note-input'))
+      .some(el => el.value && el.value.trim() !== '');
+    if (hasInput) return;
+  }
   const date      = $('#p_date').value || todayStr();
 
   const todayRecs = {};
