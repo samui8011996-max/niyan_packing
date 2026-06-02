@@ -1774,25 +1774,18 @@ function computeTodayLogi() {
       else (others[logi] = (others[logi] || 0) + qty);   // 蝦皮一般、蝦皮黑貓、蝦皮隔日… 各自獨立
     });
   });
-  // 未出貨（今日、未完成）→ 從今日總數扣除
- // 未出貨：
-  //  ① 建立日=今天且未完成 → 從今日扣除（今天少出了這些）
-  //  ② 完成日=今天（已完成）→ 加回今日（今天補出了這些）
-  state.platforms.filter(p => p['平台'] === '未出貨').forEach(p => {
-    const done = isDone(p['已完成']);
-    const createdToday = fmtDate(p['日期']) === today;
-    const doneToday    = fmtDate(p['完成日期']) === today;
-
-    let sign = 0;
-    if (!done && createdToday) sign = -1;   // 未完成：當天扣
-    else if (done && doneToday) sign = +1;  // 完成日當天：加回
-
-    if (!sign) return;
+  // 未出貨：建立日=今天且「未完成」→ 從今日扣除。
+  // 完成後不再扣（那幾件本來就算在今日平台數字裡，等於放回去）。
+  state.platforms.filter(p =>
+    p['平台'] === '未出貨' &&
+    fmtDate(p['日期']) === today &&
+    !isDone(p['已完成'])
+  ).forEach(p => {
     (Array.isArray(p['明細']) ? p['明細'] : []).forEach(d => {
       const logi = String(d.物流 || '').trim();
       const qty  = Number(d.件數) || 0;
-      if (logi === '黑貓')             blackcat += sign * qty;
-      else if (logi.includes('超商'))  cvs += sign * qty;
+      if (logi === '黑貓')             blackcat -= qty;
+      else if (logi.includes('超商'))  cvs -= qty;
     });
   });
   return { blackcat, cvs, others };
@@ -1819,8 +1812,15 @@ function renderUnsentBoard() {
   const card = $('#unsentCard');
   const list = $('#unsentList');
   if (!card || !list) return;
+  const today = todayStr();
   const unsent = state.platforms
-    .filter(p => p['平台'] === '未出貨' && !isDone(p['已完成']))
+    .filter(p => {
+      if (p['平台'] !== '未出貨') return false;
+      // 未完成 → 一直顯示
+      if (!isDone(p['已完成'])) return true;
+      // 已完成 → 只在「完成日=今天」顯示，隔天消失
+      return fmtDate(p['完成日期']) === today;
+    })
     .sort((a,b) => (a['日期']||'').localeCompare(b['日期']||''));
 
   if (!unsent.length) { card.style.display = 'none'; list.innerHTML = ''; return; }
@@ -1832,15 +1832,18 @@ function renderUnsentBoard() {
       `<div class="pf-line"><span>${escapeHtml(d.物流||'件數')}</span><b>${d.件數||0}</b></div>`
     ).join('') || '<div style="text-align:center;padding:4px 0;font-size:12px;">無件數</div>';
     const note = safeText(rec['備註']);
+    const done = isDone(rec['已完成']);
     return `
-       <div class="pf-card" data-unsent-id="${rec.id}" style="border-left:4px solid var(--stamp-red);cursor:pointer;">
+       <div class="pf-card ${done ? 'done' : ''}" data-unsent-id="${rec.id}" style="border-left:4px solid var(--stamp-red);cursor:pointer;">
         <div class="pf-platform"><span>未出貨</span>
           <span class="pf-tag" style="background:var(--accent);">${fmtDate(rec['日期'])||''}</span>
         </div>
         <div class="pf-details">${detailHtml}</div>
         ${note ? `<div style="font-family:'Noto Sans TC','Klee One',serif;font-size:12px;color:var(--stamp-red);border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
         <div class="pf-actions">
-          <button class="btn small primary" data-unsent-done="${rec.id}">已出貨完成 ✓</button>
+          ${done
+            ? `<button class="btn small ghost" data-unsent-undone="${rec.id}">取消完成</button>`
+            : `<button class="btn small primary" data-unsent-done="${rec.id}">已出貨完成 ✓</button>`}
           <button class="btn small ghost" data-unsent-del="${rec.id}">刪除</button>
         </div>
       </div>`;
