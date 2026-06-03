@@ -472,6 +472,10 @@ html, body {
   border-left-color: var(--stamp-red);
 }
 
+.pf-form-card[data-platform="補寄"],
+.pf-form-card[data-platform="補寄"].has-data {
+  border-left-color: var(--pf-info, #a7b8ab);
+}
 
   .pf-form-head {
     display: flex; align-items: center; gap: 10px;
@@ -3464,7 +3468,9 @@ const numButtons = `
       <div class="pf-form-card" data-platform="${escapeAttr(name)}">
 <div class="pf-form-head">
           <span class="pf-name">${name}</span>
+           ${name === '未出貨' ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:6px;letter-spacing:1px;">✦ 每次送出都會新增一筆，可累計多筆</div>` : ''}
           <span class="pf-sum">小計 <b data-sum="${escapeAttr(name)}">0</b></span>
+        
           ${!DEFAULT_PLATFORM_ORDER.includes(name) ? `<button type="button" class="pf-del-platform" data-del-platform="${escapeAttr(name)}" title="刪除平台">×</button>` : ''}
         </div>
         <div class="pf-inputs">${inputs}</div>
