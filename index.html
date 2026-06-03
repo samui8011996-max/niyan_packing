@@ -1784,8 +1784,9 @@ function computeTodayLogi() {
     (Array.isArray(p['明細']) ? p['明細'] : []).forEach(d => {
       const logi = String(d.物流 || '').trim();
       const qty  = Number(d.件數) || 0;
-      if (logi === '黑貓')             blackcat -= qty;
+    if (logi === '黑貓')             blackcat -= qty;
       else if (logi.includes('超商'))  cvs -= qty;
+      else                             others[logi] = (others[logi] || 0) - qty;
     });
   });
   return { blackcat, cvs, others };
@@ -1835,7 +1836,8 @@ function renderUnsentBoard() {
     const done = isDone(rec['已完成']);
     return `
        <div class="pf-card ${done ? 'done' : ''}" data-unsent-id="${rec.id}" style="border-left:4px solid var(--stamp-red);cursor:pointer;">
-        <div class="pf-platform"><span>未出貨</span>
+        <div class="pf-platform">
+          <span>未出貨${safeText(rec['來源平台']) ? ' · ' + escapeHtml(safeText(rec['來源平台'])) : ''}</span>
           <span class="pf-tag" style="background:var(--accent);">${fmtDate(rec['日期'])||''}</span>
         </div>
         <div class="pf-details">${detailHtml}</div>
@@ -3431,6 +3433,29 @@ function renderPlatformForm(force) {
   });
 
   area.innerHTML = '<div class="pf-form">' + getPlatformOrder().map(name => {
+
+    if (name === '未出貨') {
+      const platOpts = getPlatformOrder().filter(n => n !== '未出貨')
+        .map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('');
+      return `
+      <div class="pf-form-card" data-platform="未出貨" style="border-left-color: var(--stamp-red);">
+        <div class="pf-form-head">
+          <span class="pf-name">未出貨</span>
+          <span class="pf-sum">小計 <b data-sum="未出貨">0</b></span>
+        </div>
+        <div style="font-size:12px;color:var(--ink-soft);margin:2px 0 10px;letter-spacing:1px;">✦ 每次送出都會新增一筆，可累計多筆</div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>未出貨平台</label>
+          <select id="unsent_platform"><option value="">—</option>${platOpts}</select>
+        </div>
+        <div class="pf-inputs" id="unsent_logi_inputs">
+          <div style="grid-column:1/-1;text-align:center;color:var(--ink-soft);font-size:13px;padding:8px 0;">請先選擇平台</div>
+        </div>
+        <div class="pf-form-note">
+          <input type="text" class="pf-note-input" data-pf="未出貨" placeholder="補充備註（選填，會接在自動備註後）">
+        </div>
+      </div>`;
+    }
     const opts     = getPlatformLogistics()[name] || [];
     // 未出貨每次送出都新增一筆，故表單永遠空白、不回填
     const existing = (name === '未出貨') ? null : todayRecs[name];
@@ -3523,6 +3548,53 @@ area.querySelectorAll('.pf-num-btn').forEach(btn => {
 });
 
   getPlatformOrder().forEach(updatePfSum);
+  // 未出貨：選平台 → 帶出該平台物流欄位
+  (function bindUnsent() {
+    const sel  = document.getElementById('unsent_platform');
+    const wrap = document.getElementById('unsent_logi_inputs');
+    if (!sel || !wrap) return;
+
+    const numBtns = `
+      <div class="pf-num-btns">
+        <button type="button" class="pf-num-btn" data-delta="1">+1</button>
+        <button type="button" class="pf-num-btn" data-delta="5">+5</button>
+        <button type="button" class="pf-num-btn" data-delta="10">+10</button>
+        <button type="button" class="pf-num-btn" data-delta="50">+50</button>
+        <button type="button" class="pf-num-btn clear" data-clear="1">清除</button>
+      </div>`;
+
+    function build(platform) {
+      const opts = getPlatformLogistics()[platform] || [];
+      if (!platform) {
+        wrap.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--ink-soft);font-size:13px;padding:8px 0;">請先選擇平台</div>`;
+      } else if (!opts.length) {
+        wrap.innerHTML = `<div class="field"><label>總件數</label><input type="number" min="0" class="pf-input" data-pf="未出貨" data-logi="__total__">${numBtns}</div>`;
+      } else {
+        wrap.innerHTML = opts.map(opt => `
+          <div class="field"><label>${escapeHtml(opt)}</label>
+            <input type="number" min="0" class="pf-input" data-pf="未出貨" data-logi="${escapeAttr(opt)}">${numBtns}
+          </div>`).join('');
+      }
+      wrap.querySelectorAll('.pf-input').forEach(inp => {
+        inp.addEventListener('input', () => updatePfSum('未出貨'));
+      });
+      wrap.querySelectorAll('.pf-num-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const field = btn.closest('.field');
+          const inp = field && field.querySelector('.pf-input');
+          if (!inp) return;
+          if (btn.dataset.clear) inp.value = '';
+          else inp.value = Math.max(0, (Number(inp.value)||0) + (Number(btn.dataset.delta)||0)) || '';
+          updatePfSum('未出貨');
+        });
+      });
+      updatePfSum('未出貨');
+    }
+
+    sel.addEventListener('change', () => build(sel.value));
+    build(sel.value);
+  })();
 // 新增平台（一步完成）
   const inlineAddBtn  = document.getElementById('inline_pm_add');
   const inlineNameInp = document.getElementById('inline_pm_name');
@@ -3629,12 +3701,44 @@ $('#pReset').addEventListener('click', resetPlatformForm);
 
 $('#pSubmit').addEventListener('click', async () => {
   if (!API_URL) { toast('請先設定 API 網址', true); return; }
-  const date = $('#p_date').value;
+ const date = $('#p_date').value;
   if (!date)  { toast('請選日期', true); return; }
+
+  // 未出貨：有填件數就一定要選平台
+  const unsentSel = document.getElementById('unsent_platform');
+  const unsentTotal = Array.from(document.querySelectorAll('.pf-input[data-pf="未出貨"]'))
+    .reduce((s, inp) => s + (Number(inp.value) || 0), 0);
+  if (unsentTotal > 0 && !(unsentSel && unsentSel.value)) {
+    toast('未出貨請先選擇平台', true);
+    return;
+  }
+
   const globalNote = '';
   const items = [];
 
   getPlatformOrder().forEach(name => {
+    if (name === '未出貨') {
+      const srcPlatform = unsentSel ? unsentSel.value : '';
+      let detail = [], total = 0;
+      document.querySelectorAll('.pf-input[data-pf="未出貨"]').forEach(inp => {
+        const n = Number(inp.value) || 0;
+        total += n;
+        if (n > 0 && inp.dataset.logi !== '__total__') {
+          detail.push({ 物流: inp.dataset.logi, 件數: n });
+        }
+      });
+      if (total <= 0) return;
+      let autoNote;
+      if (detail.length) {
+        autoNote = detail.map(d => `【${srcPlatform}】${d.物流} ${d.件數} 件未出貨`).join('、');
+      } else {
+        autoNote = `【${srcPlatform}】${total} 件未出貨`;
+      }
+      const extra = (document.querySelector('.pf-note-input[data-pf="未出貨"]')?.value || '').trim();
+      const note = extra ? `${autoNote}　${extra}` : autoNote;
+      items.push({ 平台: '未出貨', 明細: detail, 總件數: total, 備註: note, 來源平台: srcPlatform });
+      return;
+    }
     const opts = getPlatformLogistics()[name] || [];
     let detail = [], total = 0;
     if (!opts.length) {
@@ -3673,7 +3777,7 @@ $('#pSubmit').addEventListener('click', async () => {
         await api('updatePlatform', { id: exist.id, '明細': item.明細, '總件數': item.總件數, '備註': note });
         updated++;
       } else {
-        await api('addPlatform', { '日期': date, '平台': item.平台, '明細': item.明細, '總件數': item.總件數, '備註': note });
+        await api('addPlatform', { '日期': date, '平台': item.平台, '明細': item.明細, '總件數': item.總件數, '備註': note, '來源平台': item.來源平台 || '' });
         added++;
       }
     }
