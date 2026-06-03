@@ -3700,21 +3700,53 @@ function openPlatformEdit(rec, platformName, overrideDate) {
   } else {
     detailHtml = options.map(opt => `
       <div class="field">
-        <label>${opt}${opt==='黑貓'?'':''}</label>
+        <label>${opt}</label>
         <input type="number" class="ef-logi" data-logi="${escapeAttr(opt)}" value="${map[opt]||''}">
       </div>
     `).join('');
   }
 
+  const currentDone = !isNew && isDone(rec['已完成']);
+
   $('#pfmBody').innerHTML = `
     <div class="form-grid">${detailHtml}</div>
     <div class="field" style="margin-top:12px;"><label>備註</label><textarea id="ef_note">${escapeHtml(isNew ? '' : safeText(rec['備註']))}</textarea></div>
-<div class="btn-row split">
+    ${!isNew ? `
+    <div style="margin-top:14px;padding:10px 12px;background:var(--paper-2);border-radius:8px;border-left:3px solid ${currentDone ? '#8aab74' : 'var(--accent)'};display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-family:'Klee One',serif;font-size:13px;color:var(--ink-soft);">完成狀態</span>
+      <span style="font-family:'Shippori Mincho',serif;font-size:14px;font-weight:700;color:${currentDone ? '#5b8c5a' : 'var(--stamp-red)'};">${currentDone ? '✓ 已完成' : '○ 未完成'}</span>
+      <button class="btn small ${currentDone ? 'ghost' : 'success'}" id="efToggleDone" style="margin-left:auto;">
+        ${currentDone ? '取消完成' : '標記完成 ✓'}
+      </button>
+    </div>` : ''}
+    <div class="btn-row split">
       <button class="btn small ghost" data-close>關閉</button>
       <button class="btn small primary" id="efSave">儲存</button>
     </div>
   `;
   $('#pfModal').classList.add('show');
+
+  // 標記/取消完成
+  document.getElementById('efToggleDone')?.addEventListener('click', async () => {
+    const btn = document.getElementById('efToggleDone');
+    const willDone = !currentDone;
+    btn.disabled = true;
+    btn.textContent = '處理中…';
+    try {
+      await api('updatePlatform', {
+        id: rec.id,
+        '已完成': willDone,
+        '完成日期': willDone ? todayStr() : ''
+      });
+      $('#pfModal').classList.remove('show');
+      await loadAll();
+      toast(willDone ? '已標記完成' : '已取消完成');
+    } catch (e) {
+      toast(e.message, true);
+      btn.disabled = false;
+      btn.textContent = willDone ? '標記完成 ✓' : '取消完成';
+    }
+  });
 
   $('#efSave').addEventListener('click', async () => {
     let detail = [], total = 0;
@@ -3749,8 +3781,6 @@ function openPlatformEdit(rec, platformName, overrideDate) {
       toast(isNew ? '已新增' : '已儲存');
     } catch (e) { toast(e.message, true); }
   });
-
-
 }
 
 /* ============ 分頁切換 ============ */
