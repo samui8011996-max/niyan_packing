@@ -472,10 +472,7 @@ html, body {
   border-left-color: var(--stamp-red);
 }
 
-.pf-form-card[data-platform="補寄"],
-.pf-form-card[data-platform="補寄"].has-data {
-  border-left-color: var(--pf-info, #a7b8ab);
-}
+
   .pf-form-head {
     display: flex; align-items: center; gap: 10px;
     margin-bottom: 8px;
@@ -1355,17 +1352,13 @@ z-index: 10;
 <section class="section" id="sec-platform">
   <div class="card">
    <span class="tape t-blue">platform ✦ 新 平 台 單</span>
-    <div class="form-grid" style="margin-bottom:16px;">
+
       <div class="field">
         <label>日 期</label>
         <input type="date" id="p_date">
       </div>
-<div class="field full">
-        <label>全域備註（選填）</label>
-        <input type="text" id="p_global_note" placeholder="適用所有平台的備註…">
-      </div>
 
-    </div>
+   
     
     </div>
     <div id="p_all_platforms"></div>
@@ -3616,7 +3609,6 @@ function updatePfSum(name) {
 
 function resetPlatformForm() {
   $('#p_date').value        = todayStr();
-  $('#p_global_note').value = '';
   renderPlatformForm();
 }
 
@@ -3627,7 +3619,7 @@ $('#pSubmit').addEventListener('click', async () => {
   if (!API_URL) { toast('請先設定 API 網址', true); return; }
   const date = $('#p_date').value;
   if (!date)  { toast('請選日期', true); return; }
-  const globalNote = $('#p_global_note').value;
+  const globalNote = '';
   const items = [];
 
   getPlatformOrder().forEach(name => {
