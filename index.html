@@ -1366,6 +1366,7 @@ z-index: 10;
       </div>
 
     </div>
+    
     </div>
     <div id="p_all_platforms"></div>
     <div class="btn-row">
@@ -1373,6 +1374,8 @@ z-index: 10;
       <button class="btn primary" id="pSubmit">送 出</button>
     </div>
   </div>
+
+  
 </section>
     <!-- 新廠商單 -->
 <section class="section" id="sec-vendor">
@@ -1940,11 +1943,21 @@ function renderPlatformBoard() {
     bulkBar.style.display = 'none';
   }
 
-  const visibleNames = getBoardPlatformOrder().filter(n => {
-    if (!hiddenPf.has(n + '|' + today)) return true;
-    return false;
-  });
+  let visibleNames = getBoardPlatformOrder().filter(n => !hiddenPf.has(n + '|' + today));
   const hiddenCount = getBoardPlatformOrder().length - visibleNames.length;
+
+  // 排序：未完成有資料 → 未填寫 → 已完成；同組維持原順序
+  const baseOrder = getBoardPlatformOrder();
+  const rankOf = (name) => {
+    const rec = byPlatform[name];
+    if (!rec) return 1;                       // 未填寫
+    return isDone(rec['已完成']) ? 2 : 0;     // 已完成=2、未完成有資料=0
+  };
+  visibleNames = visibleNames.slice().sort((a, b) => {
+    const ra = rankOf(a), rb = rankOf(b);
+    if (ra !== rb) return ra - rb;
+    return baseOrder.indexOf(a) - baseOrder.indexOf(b);
+  });
 
   if (visibleNames.length === 0) {
     list.innerHTML = '<div class="empty" style="grid-column:1/-1;">所有平台已隱藏</div>';
