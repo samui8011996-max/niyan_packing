@@ -1922,10 +1922,16 @@ function renderPlatformBoard() {
   const todayItems = state.platforms.filter(p => fmtDate(p['日期']) === today && p['平台'] !== '未出貨');
   const byPlatform = {};
   todayItems.forEach(p => { byPlatform[p['平台']] = p; });
+  // 今日有資料、但不在標準平台清單裡的平台（例如「其他」）也要顯示在公告
+  const boardNames = (() => {
+    const base = getBoardPlatformOrder();
+    const extra = Object.keys(byPlatform).filter(n => !base.includes(n));
+    return [...base, ...extra];
+  })();
 
   // 計算未完成且無備註者（可以一鍵完成的）
   let undoneCanBulk = 0;
-  getBoardPlatformOrder().forEach(name => {
+  boardNames.forEach(name => {
     const rec = byPlatform[name];
     if (rec && !isDone(rec['已完成'])) {
       const note = safeText(rec['備註']);
@@ -1940,11 +1946,11 @@ function renderPlatformBoard() {
     bulkBar.style.display = 'none';
   }
 
-  let visibleNames = getBoardPlatformOrder().filter(n => !hiddenPf.has(n + '|' + today));
-  const hiddenCount = getBoardPlatformOrder().length - visibleNames.length;
+  let visibleNames = boardNames.filter(n => !hiddenPf.has(n + '|' + today));
+  const hiddenCount = boardNames.length - visibleNames.length;
 
   // 排序：未完成有資料 → 未填寫 → 已完成；同組維持原順序
-  const baseOrder = getBoardPlatformOrder();
+  const baseOrder = boardNames;
   const rankOf = (name) => {
     const rec = byPlatform[name];
     if (!rec) return 1;                       // 未填寫
@@ -2008,7 +2014,7 @@ ${isDone(rec['已完成'])
   if (hiddenCount > 0) {
     toggle.innerHTML = `<button id="pfShowHidden">顯示已隱藏的 ${hiddenCount} 個</button>`;
    $('#pfShowHidden').addEventListener('click', () => {
-      getBoardPlatformOrder().forEach(n => hiddenPf.delete(n + '|' + today));
+      boardNames.forEach(n => hiddenPf.delete(n + '|' + today));
       saveHidden();
       renderPlatformBoard();
     });
