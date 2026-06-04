@@ -3741,7 +3741,7 @@ function updatePfSum(name) {
 
 function resetPlatformForm() {
   $('#p_date').value        = todayStr();
-  renderPlatformForm();
+  renderPlatformForm(true);
 }
 
 $('#p_date').addEventListener('change', renderPlatformForm);
@@ -3824,7 +3824,7 @@ $('#pSubmit').addEventListener('click', async () => {
     }
     toast(`已送出 ${added + updated} 筆`);
     await loadAll();
-    renderPlatformForm();
+    renderPlatformForm(true);  // 強制重建＝清空
     switchTab('board');
   } catch (e) {
     toast(e.message, true);
