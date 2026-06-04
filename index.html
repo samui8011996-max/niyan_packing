@@ -4026,6 +4026,17 @@ document.addEventListener('click', e => {
 
 /* ============ 設定 ============ */
 $('#cfgUrl').value = API_URL;
+$('#cfgSave').addEventListener('click', () => {
+  const url = $('#cfgUrl').value.trim();
+  if (!url) { toast('請輸入網址', true); return; }
+  localStorage.setItem(LS_URL, url);
+  API_URL = url;
+  const s = $('#cfgStatus');
+  s.textContent = '✓ 已儲存，重新載入…';
+  s.className = 'status ok';
+  toast('已儲存');
+  setTimeout(() => location.reload(), 600);
+});
 $('#cfgClear').addEventListener('click', () => {
   $('#cfgUrl').value = '';
   $('#cfgUrl').focus();
