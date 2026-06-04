@@ -715,7 +715,18 @@ z-index: 10;
     padding-top: 8px;
     border-top: 1px dashed var(--line);
   }
-
+/* 未出貨卡片操作列：不換行、按鈕緊湊 */
+#unsentList .pf-actions {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 5px;
+}
+#unsentList .pf-actions .btn.small {
+  padding: 4px 9px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
   /* 一鍵完成全部按鈕區 */
   .bulk-bar {
     display: flex; align-items: center; gap: 10px;
@@ -1774,21 +1785,33 @@ function computeTodayLogi() {
       else (others[logi] = (others[logi] || 0) + qty);   // 蝦皮一般、蝦皮黑貓、蝦皮隔日… 各自獨立
     });
   });
-  // 未出貨：建立日=今天且「未完成」→ 從今日扣除。
-  // 完成後不再扣（那幾件本來就算在今日平台數字裡，等於放回去）。
+  // 未出貨【扣除】：建立日=今天 → 一律從今日扣除（不論完成與否，那幾件當天沒出）
   state.platforms.filter(p =>
     p['平台'] === '未出貨' &&
-    fmtDate(p['日期']) === today &&
-    !isDone(p['已完成'])
+    fmtDate(p['日期']) === today
   ).forEach(p => {
     (Array.isArray(p['明細']) ? p['明細'] : []).forEach(d => {
       const logi = String(d.物流 || '').trim();
       const qty  = Number(d.件數) || 0;
-    if (logi === '黑貓')             blackcat -= qty;
+      if (logi === '黑貓')             blackcat -= qty;
       else if (logi.includes('超商'))  cvs -= qty;
       else                             others[logi] = (others[logi] || 0) - qty;
     });
   });
+
+  // 未出貨【加回】：完成日=今天 → 加到「完成時選擇的物流」（黑貓 / 超商）
+  state.platforms.filter(p =>
+    p['平台'] === '未出貨' &&
+    isDone(p['已完成']) &&
+    fmtDate(p['完成日期']) === today
+  ).forEach(p => {
+    const qty  = Number(p['總件數']) || 0;
+    if (!qty) return;
+    const logi = String(p['完成物流'] || '黑貓').trim();
+    if (logi.includes('超商')) cvs += qty;
+    else                       blackcat += qty;
+  });
+
   return { blackcat, cvs, others };
 }
 
@@ -1844,18 +1867,43 @@ function renderUnsentBoard() {
         ${note ? `<div style="font-family:'Noto Sans TC','Klee One',serif;font-size:12px;color:var(--stamp-red);border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
         <div class="pf-actions">
           ${done
-            ? `<button class="btn small ghost" data-unsent-undone="${rec.id}">取消完成</button>`
-            : `<button class="btn small primary" data-unsent-done="${rec.id}">已出貨完成 ✓</button>`}
-          <button class="btn small ghost" data-unsent-del="${rec.id}">刪除</button>
+            ? `<span style="font-size:12px;color:var(--ink-soft);align-self:center;">完成物流：${escapeHtml(safeText(rec['完成物流'])||'黑貓')}</span>
+               <button class="btn small ghost" data-unsent-undone="${rec.id}">取消完成</button>`
+            : `
+               <button class="btn small primary" data-unsent-done="${rec.id}" data-done-logi="黑貓">黑貓出貨 ✓</button>
+               <button class="btn small primary" data-unsent-done="${rec.id}" data-done-logi="超商">超商出貨 ✓</button>`}
+         <button class="btn small ghost" data-unsent-del="${rec.id}">刪除</button>
         </div>
       </div>`;
   }).join('');
 
   list.querySelectorAll('[data-unsent-done]').forEach(b => {
-    b.addEventListener('click', async () => {
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const logi = b.dataset.doneLogi || '黑貓';
       try {
-        await api('updatePlatform', { id: b.dataset.unsentDone, '已完成': true, '完成日期': todayStr() });
-        toast('已標記出貨完成');
+        await api('updatePlatform', {
+          id: b.dataset.unsentDone,
+          '已完成': true,
+          '完成日期': todayStr(),
+          '完成物流': logi
+        });
+        toast(`已完成出貨（${logi}）`);
+        await loadAll();
+      } catch (err) { toast(err.message, true); }
+    });
+  });
+  list.querySelectorAll('[data-unsent-undone]').forEach(b => {
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        await api('updatePlatform', {
+          id: b.dataset.unsentUndone,
+          '已完成': false,
+          '完成日期': '',
+          '完成物流': ''
+        });
+        toast('已取消完成');
         await loadAll();
       } catch (err) { toast(err.message, true); }
     });
@@ -3728,14 +3776,7 @@ $('#pSubmit').addEventListener('click', async () => {
         }
       });
       if (total <= 0) return;
-      let autoNote;
-      if (detail.length) {
-        autoNote = detail.map(d => `【${srcPlatform}】${d.物流} ${d.件數} 件未出貨`).join('、');
-      } else {
-        autoNote = `【${srcPlatform}】${total} 件未出貨`;
-      }
-      const extra = (document.querySelector('.pf-note-input[data-pf="未出貨"]')?.value || '').trim();
-      const note = extra ? `${autoNote}　${extra}` : autoNote;
+      const note = (document.querySelector('.pf-note-input[data-pf="未出貨"]')?.value || '').trim();
       items.push({ 平台: '未出貨', 明細: detail, 總件數: total, 備註: note, 來源平台: srcPlatform });
       return;
     }
