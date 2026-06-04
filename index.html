@@ -1814,7 +1814,31 @@ function computeTodayLogi() {
 
   return { blackcat, cvs, others };
 }
-
+/* 某平台今天「未出貨且未完成」的扣除量（給今日平台卡片顯示用） */
+function unsentDeductFor(platformName, today) {
+  let total = 0;
+  const byLogi = {};
+  state.platforms.filter(p =>
+    p['平台'] === '未出貨' &&
+    safeText(p['來源平台']) === platformName &&
+    fmtDate(p['日期']) === today &&
+    !isDone(p['已完成'])
+  ).forEach(p => {
+    const detail = Array.isArray(p['明細']) ? p['明細'] : [];
+    if (detail.length) {
+      detail.forEach(d => {
+        const logi = String(d.物流 || '').trim();
+        const qty  = Number(d.件數) || 0;
+        if (!qty) return;
+        total += qty;
+        byLogi[logi] = (byLogi[logi] || 0) + qty;
+      });
+    } else {
+      total += Number(p['總件數']) || 0;
+    }
+  });
+  return { total, byLogi };
+}
 /* 今日物流總數摘要 */
 function renderTodayLogiSummary() {
   const el = $('#todayLogiSummary');
@@ -2042,12 +2066,25 @@ function renderPlatformBoard() {
         detailHtml = '<div style="text-align:center; padding: 4px 0; font-size: 12px;">無細項</div>';
       }
       const note = safeText(rec['備註']);
+      // 未出貨扣除：來源平台＝本平台、今天建立、尚未完成
+      const ded = unsentDeductFor(name, today);
+      let dedHtml = '';
+      if (ded.total > 0) {
+        const dedLines = Object.keys(ded.byLogi).map(l =>
+          `<div class="pf-line" style="color:var(--stamp-red);"><span>未出貨 ${escapeHtml(l)}</span><b>−${ded.byLogi[l]}</b></div>`
+        ).join('');
+        const net = (Number(rec['總件數'])||0) - ded.total;
+        dedHtml = `<div style="border-top:1px dotted var(--line);margin-top:2px;padding-top:2px;">
+            ${dedLines}
+            <div class="pf-line" style="font-weight:700;"><span>今日實出</span><b style="color:var(--stamp-blue);">${net}</b></div>
+          </div>`;
+      }
       return `
       <div class="pf-card ${isDone(rec['已完成']) ? 'done' : ''}" data-id="${rec.id}">
           <button class="card-hide-btn" data-hide-pf="${escapeAttr(hideKey)}" title="隱藏">×</button>
           <div class="pf-platform"><span>${name}</span></div>
           <div class="pf-total"><span class="label">總</span>${rec['總件數']||0}</div>
-          <div class="pf-details">${detailHtml}</div>
+          <div class="pf-details">${detailHtml}${dedHtml}</div>
          ${note ? `<div style="font-family:'Noto Sans TC','Klee One',serif;font-size:12px;color:var(--stamp-red);border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
         <div class="pf-actions">
 ${isDone(rec['已完成'])
