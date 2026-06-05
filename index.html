@@ -1641,6 +1641,7 @@ const LS_URL    = 'shippingApiUrl_v2';
 const LS_COLORS = 'shippingColors_v1';
 const LS_HIDDEN_VENDOR = 'shippingHiddenVendor_v1';
 const LS_HIDDEN_PF     = 'shippingHiddenPf_v1';
+const LS_CACHE = 'shippingDataCache_v1';
 
 const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
 
@@ -1792,6 +1793,29 @@ async function api(action, payload = {}) {
 }
 
 let loadSeq = 0;
+function saveShippingCache() {
+  try {
+    localStorage.setItem(LS_CACHE, JSON.stringify({
+      orders:    state.orders,
+      progress:  state.progress,
+      platforms: state.platforms,
+      settings:  state.settings
+    }));
+  } catch(_) {}
+}
+function hydrateShippingCache() {
+  try {
+    const raw = localStorage.getItem(LS_CACHE);
+    if (!raw) return false;
+    const c = JSON.parse(raw);
+    state.orders    = c.orders    || [];
+    state.progress  = c.progress  || [];
+    state.platforms = c.platforms || [];
+    state.settings  = c.settings  || {};
+    renderAll();
+    return true;
+  } catch(_) { return false; }
+}
 async function loadAll() {
   if (!API_URL) return;
   const mySeq = ++loadSeq;
@@ -1803,6 +1827,7 @@ async function loadAll() {
     state.platforms = main.platforms || [];
     state.settings  = main.settings  || {};
     renderAll();
+    saveShippingCache(); 
     setSyncStatus(true);   // ←
     updateSyncTime();      // ←
   } catch (e) {
@@ -4113,6 +4138,7 @@ $('#cfgTest').addEventListener('click', async () => {
 resetVendorForm();
 resetPlatformForm();
 if (API_URL) {
+  hydrateShippingCache();
   loadAll();
  pollTimer = setInterval(loadAll, 10000);
 } else {
