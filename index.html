@@ -3131,9 +3131,7 @@ const orderNo = safeText(o['訂單編號']);
 const note    = safeText(o['備註']);
   const style = safeText(o['款式']);
   const size = safeText(o['大小']);
-
-  const staffOpts = STAFFS.map(s => `<option>${s}</option>`).join('');
-
+  const staffChips = STAFFS.map(s => `<div class="chip staff-chip" data-staff="${escapeAttr(s)}">${escapeHtml(s)}</div>`).join('');
 let html = `
     <div style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;line-height:1.8;">
       ${meta}
@@ -3181,9 +3179,9 @@ let html = `
         <div style="${isDone?'opacity:.5;pointer-events:none;':''}">
 <div style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;letter-spacing:1px;">包貨人員填寫</div>
 <div class="form-grid" style="margin-bottom: 10px;">
-<div class="field">
-  <label>包貨人員</label>
-  <select id="pStaff">${staffOpts}</select>
+<div class="field full">
+  <label>包貨人員（可複選）</label>
+  <div class="pack-grid" id="pStaffChips">${staffChips}</div>
 </div>
            
             <div class="field">      
@@ -3328,6 +3326,10 @@ const chk = $('#checkAll'), pQty = $('#pQty');
   });
  
   $('#pSave')?.addEventListener('click', addOrderProgress);
+  // 包貨人員複選 chip
+  $('#omBody').querySelectorAll('.staff-chip').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('on'));
+  });
 
   $('#omBody').querySelectorAll('.del-btn').forEach(b => {
     b.addEventListener('click', async () => {
@@ -3345,7 +3347,11 @@ $('#orderClose').addEventListener('click', () => closeOrderModal());
 
   $('#orderEdit').addEventListener('click', () => openOrderEdit(o));
 }
-
+function getSelectedStaff() {
+  return Array.from(document.querySelectorAll('#pStaffChips .staff-chip.on'))
+    .map(c => c.dataset.staff)
+    .join('、');
+}
 async function addOrderProgress() {
   const o = currentOrder; if (!o) return;
   const itListCur = Array.isArray(o['items']) && o['items'].length ? o['items'] : null;
@@ -3362,7 +3368,7 @@ async function addOrderProgress() {
     });
     if (!entries.length) { toast('請至少填一項數量', true); return; }
 
-    const staff = $('#pStaff')?.value || '';
+    const staff = getSelectedStaff();
     if (!staff) { toast('請選包貨人員', true); return; }
 
     const saveBtn = $('#pSave');
@@ -3400,7 +3406,7 @@ async function addOrderProgress() {
 
   // 單品項
   const qty   = Number($('#pQty')?.value);
-  const staff = $('#pStaff').value;
+  const staff = getSelectedStaff();
   if (!qty || qty <= 0) { toast('請輸入數量', true); return; }
   if (!staff)            { toast('請選包貨人員', true); return; }
 
