@@ -110,6 +110,33 @@ html, body {
   margin: 0 auto 8px;
   object-fit: contain;
 }
+.sync-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--ink-soft);
+}
+.sync-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--dk-green);
+  box-shadow: 0 0 6px rgba(91,140,90,0.5);
+  animation: sync-pulse 2s ease-in-out infinite;
+}
+.sync-dot.off {
+  background: var(--stamp-red);
+  box-shadow: 0 0 6px rgba(200,85,74,0.5);
+  animation: none;
+}
+@keyframes sync-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
   .banner::before {
     content: '';
     position: absolute;
@@ -1296,6 +1323,11 @@ z-index: 10;
     <h1>包 貨 紀 錄</h1>
     <div class="sub">泥 研 製 所</div>
     <button class="btn small ghost" id="manualRefresh" style="margin-top:8px;font-size:12px;letter-spacing:2px;">↻ 更新</button>
+    <div class="sync-bar">
+  <span class="sync-dot" id="syncDot"></span>
+  <span id="syncStatus">CONNECTED</span>
+  <span id="syncTime"></span>
+</div>
   </div>
 
   <div class="main">
@@ -1707,6 +1739,20 @@ function todayStr() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
+function setSyncStatus(ok) {
+  const dot = $('#syncDot'), status = $('#syncStatus');
+  if (!dot || !status) return;
+  if (ok) { dot.classList.remove('off'); status.textContent = 'CONNECTED'; }
+  else    { dot.classList.add('off');    status.textContent = 'OFFLINE'; }
+}
+function updateSyncTime() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  const el = $('#syncTime');
+  if (el) el.textContent = `// SYNC ${hh}:${mm}:${ss}`;
+}
 function fmtDate(s) {
   if (!s) return '';
   return String(s).slice(0,10);
@@ -1749,14 +1795,17 @@ async function loadAll() {
   const mySeq = ++loadSeq;
   try {
     const main = await api('readAll');
-    if (mySeq !== loadSeq) return;   // 已有更新的請求送出，丟棄這個過期結果
+    if (mySeq !== loadSeq) return;
     state.orders    = main.orders    || [];
     state.progress  = main.progress  || [];
     state.platforms = main.platforms || [];
     state.settings  = main.settings  || {};
     renderAll();
+    setSyncStatus(true);   // ←
+    updateSyncTime();      // ←
   } catch (e) {
     console.error(e);
+    setSyncStatus(false);  // ←
     toast('同步失敗：' + e.message, true);
   }
 }
