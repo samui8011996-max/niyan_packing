@@ -1399,10 +1399,14 @@ z-index: 10;
 
       <div class="card">
         <span class="tape t-yellow">vendor ✦ 廠 商 訂 購 單</span>
-        <div class="card-title">
+       <div class="card-title">
           <span class="dot"></span>
           <span>廠 商 訂 單</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--ink-soft);" id="vendorStatsDateLabel"></span>
         </div>
+
+        <div id="vendorTodayStats"></div>
+
         <div class="filter-row">
           <label>顯示</label>
           <div class="seg" id="vendorFilter">
@@ -2141,18 +2145,27 @@ function renderPlatformBoard() {
     list.innerHTML = visibleNames.map(name => {
       const rec = byPlatform[name];
       const hideKey = name + '|' + today;
-    if (!rec) {
-  return `
-    <div class="pf-card" style="border-style: dashed; opacity: 0.55;" data-empty-platform="${escapeAttr(name)}">
-            <button class="card-hide-btn" data-hide-pf="${escapeAttr(hideKey)}" title="隱藏">×</button>
-            <div class="pf-platform">
-              <span>${name}</span>
-              <span class="pf-tag" style="background: var(--line-dark);">無</span>
-            </div>
-            <div class="pf-details" style="text-align:center; padding-top: 6px;">尚未填寫</div>
+   if (!rec) {
+      // 即使今天沒有一般單，只要有未出貨扣除就顯示出來
+      const dedE = unsentDeductFor(name, today);
+      const dedELines = dedE.total > 0
+        ? Object.keys(dedE.byLogi).map(l =>
+            `<div class="pf-line" style="color:var(--stamp-red);"><span>未出貨 ${escapeHtml(l)}</span><b>−${dedE.byLogi[l]}</b></div>`
+          ).join('')
+        : '';
+      return `
+        <div class="pf-card" style="border-style:${dedE.total>0?'solid':'dashed'};opacity:${dedE.total>0?'1':'0.55'};" data-empty-platform="${escapeAttr(name)}">
+          <button class="card-hide-btn" data-hide-pf="${escapeAttr(hideKey)}" title="隱藏">×</button>
+          <div class="pf-platform">
+            <span>${name}</span>
+            <span class="pf-tag" style="background: var(--line-dark);">${dedE.total>0?'扣':'無'}</span>
           </div>
-        `;
-      }
+          ${dedELines
+            ? `<div class="pf-details">${dedELines}</div>`
+            : `<div class="pf-details" style="text-align:center; padding-top: 6px;">尚未填寫</div>`}
+        </div>
+      `;
+    }
       const detail = rec['明細'] || [];
       let detailHtml = '';
       if (Array.isArray(detail) && detail.length) {
@@ -2278,8 +2291,48 @@ const targets = state.platforms.filter(p =>
   }
 });
 
+/* 廠商單：今日完成統計（依物流公司） */
+function computeVendorTodayStats() {
+  const today = todayStr();
+  let blackcat = 0, cvs = 0;
+  const others = {};
+  state.progress.filter(p => fmtDate(p['完成日期']) === today).forEach(p => {
+    const qty = Number(p['完成數量']) || 0;
+    if (!qty) return;
+    const logi = String(p['物流公司'] || '').trim();
+    if (logi === '黑貓')            blackcat += qty;
+    else if (logi.includes('超商')) cvs += qty;
+    else if (logi)                  others[logi] = (others[logi] || 0) + qty;
+  });
+  return { blackcat, cvs, others };
+}
+function renderVendorTodayStats() {
+  const el = $('#vendorTodayStats');
+  if (!el) return;
+  const dateLabel = $('#vendorStatsDateLabel');
+  if (dateLabel) dateLabel.textContent = todayStr();
+  const { blackcat, cvs, others } = computeVendorTodayStats();
+  const otherKeys = Object.keys(others).filter(k => others[k] > 0).sort();
+  const total = blackcat + cvs + otherKeys.reduce((s, k) => s + others[k], 0);
+  if (total === 0) {
+    el.innerHTML = `<div class="logi-summary" style="justify-content:center;">
+      <span style="font-family:'Caveat',cursive;font-size:18px;color:var(--ink-soft);letter-spacing:1px;">今日尚無完成紀錄</span>
+    </div>`;
+    return;
+  }
+  let chips = `
+    <div class="logi-chip logi-blackcat"><span class="logi-name">黑貓</span><span class="logi-num">${blackcat}</span></div>
+    <div class="logi-chip logi-cvs"><span class="logi-name">超商</span><span class="logi-num">${cvs}</span></div>
+  `;
+  otherKeys.forEach(k => {
+    chips += `<div class="logi-chip"><span class="logi-name">${escapeHtml(k)}</span><span class="logi-num">${others[k]}</span></div>`;
+  });
+  el.innerHTML = `<div class="logi-summary">${chips}</div>`;
+}
+
 function renderVendorBoard() {
   const list = $('#vendorList');
+  renderVendorTodayStats();
   let orders = state.orders.slice();
 
   const visibleAll = orders.filter(o => !hiddenVendor.has(o.id));
@@ -3298,6 +3351,7 @@ let html = `
               <label>物流公司</label>
               <select id="pLogi">
                 <option value="黑貓" selected>黑貓</option>
+                <option value="超商">超商</option>
                 <option value="新竹">新竹</option>
                 <option value="">—</option>
               </select>
