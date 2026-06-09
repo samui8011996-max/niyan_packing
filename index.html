@@ -852,7 +852,22 @@ z-index: 10;
   padding-top: 6px;
   margin-top: 6px;
 }
-
+.vc-items-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; margin: 6px 0;
+  background: var(--paper-2);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Noto Serif TC', serif;
+  font-size: 13px;
+  color: var(--ink-soft);
+  user-select: none;
+  transition: background 0.15s;
+}
+.vc-items-head:hover { background: #f0e8d4; }
+.vc-items-prog { font-family: 'Noto Serif TC', serif; font-weight: 700; }
+.vc-items-arrow { margin-left: auto; font-size: 12px; transition: transform 0.2s; }
+.vc-items-arrow.open { transform: rotate(180deg); }
   /* 隱藏卡片按鈕 */
   .card-hide-btn {
     position: absolute;
@@ -1672,7 +1687,7 @@ const LS_CACHE = 'shippingDataCache_v1';
 
 const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
 
-const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六'];
+const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆'];
 const DEFAULT_ITEMS   = ['胖胖貓','雙手貓','狗','瘦貓','消波塊','龍','一般熊','棒球熊','蟾蜍','山景名片座'];
 const DEFAULT_STYLES  = ['金運','招福','財','富'];
 const DEFAULT_SIZES   = ['巨','大','中','小'];
@@ -1752,6 +1767,7 @@ let selectedColors = [];
 let vendorFilter = 'all';
 let vendorDate   = '';
 let pollTimer    = null;
+let expandedVendorCards = new Set();
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -2416,6 +2432,30 @@ const itColors = String(it['顏色'] || '').split(/[、,，]/).map(c => c.trim()
         </div>`;
       }).join('') : '';
 
+      // 品項收合：超過 3 項預設收合，可點開
+      let itemsSection = '';
+      if (itList) {
+        let totalQty = 0, totalDone = 0;
+        itList.forEach(it => {
+          totalQty  += Number(it['數量']) || 0;
+          totalDone += itemDoneCount(o.id, it);
+        });
+        const collapsible = itList.length > 3;
+        const expanded = !collapsible || expandedVendorCards.has(o.id);
+        if (collapsible) {
+          itemsSection = `
+            <div class="vc-items-head" data-toggle-items="${o.id}">
+              <span>品項 ${itList.length} 項</span>
+              <span class="vc-items-prog"><span style="color:var(--stamp-blue);">${totalDone}</span> / ${totalQty}</span>
+              <span class="vc-items-arrow ${expanded ? 'open' : ''}">▾</span>
+            </div>
+            <div class="vc-items-body" style="${expanded ? '' : 'display:none;'}">${itemsHtml}</div>
+          `;
+        } else {
+          itemsSection = itemsHtml;
+        }
+      }
+
       const orderNo = safeText(o['訂單編號']);
       const note = safeText(o['備註']);
 
@@ -2427,7 +2467,7 @@ const itColors = String(it['顏色'] || '').split(/[、,，]/).map(c => c.trim()
             ${o['交期'] ? `<span class="due">／ 交期 ${fmtDate(o['交期'])}</span>` : ''}
           </div>
           ${safeText(o['廠商']) ? `<div class="vc-vendor">${escapeHtml(safeText(o['廠商']))}</div>` : ''}
-          ${itemsHtml}
+          ${itemsSection}
           ${orderNo ? `<div class="vc-note" style="color:var(--stamp-blue);font-size:12px;">🔖 ${escapeHtml(orderNo)}</div>` : ''}
           ${note ? `<div class="vc-note">${escapeHtml(note)}</div>` : ''}
         </div>
@@ -2453,6 +2493,20 @@ const itColors = String(it['顏色'] || '').split(/[、,，]/).map(c => c.trim()
       hiddenVendor.add(btn.dataset.hideV);
       saveHidden();
       renderVendorBoard();
+    });
+  });
+  list.querySelectorAll('[data-toggle-items]').forEach(head => {
+    head.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id    = head.dataset.toggleItems;
+      const card  = head.closest('.vendor-card');
+      const body  = card.querySelector('.vc-items-body');
+      const arrow = head.querySelector('.vc-items-arrow');
+      const open  = body.style.display === 'none';
+      body.style.display = open ? '' : 'none';
+      arrow.classList.toggle('open', open);
+      if (open) expandedVendorCards.add(id);
+      else      expandedVendorCards.delete(id);
     });
   });
   list.querySelectorAll('.vendor-card').forEach(c => {
