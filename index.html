@@ -1688,14 +1688,14 @@ const DEFAULT_COLOR_MAP = {
 };
 
 const DEFAULT_PLATFORM_LOGISTICS = {
-  'Line禮物': ['黑貓'],
+  'Line禮物': ['黑貓','超商'],
   '蝦皮':     ['超商','蝦皮隔日','蝦皮一般','蝦皮黑貓'],
   'Pinkoi':   ['黑貓','超商'],
   '瑪黑':     ['黑貓'],
   '官網':     ['黑貓','超商'],
   '博客來':   ['黑貓'],
   'MO+':      ['黑貓','超商'],
-  '酷澎':     [],
+  '酷澎':     ['黑貓','超商','指定物流'],
   '補寄':     ['黑貓','超商'],
   '未出貨':   ['黑貓','超商']
 };
@@ -1911,8 +1911,9 @@ function computeTodayLogi() {
     const qty  = Number(p['總件數']) || 0;
     if (!qty) return;
     const logi = String(p['完成物流'] || '黑貓').trim();
-    if (logi.includes('超商')) cvs += qty;
-    else                       blackcat += qty;
+    if (logi === '黑貓')            blackcat += qty;
+    else if (logi.includes('超商')) cvs += qty;
+    else                            others[logi] = (others[logi] || 0) + qty;
   });
 
   return { blackcat, cvs, others };
@@ -1958,6 +1959,23 @@ function renderTodayLogiSummary() {
   el.innerHTML = `<div class="logi-summary">${chips}</div>`;
 }
 
+
+/* 未出貨：可選的出貨方式（自各平台物流去重，含蝦皮各類） */
+function allLogiOptions() {
+  const set = new Set(['黑貓', '超商']);
+  const map = getPlatformLogistics();
+  Object.keys(map).forEach(pf => {
+    if (pf === '未出貨') return;
+    (map[pf] || []).forEach(l => { const v = String(l||'').trim(); if (v) set.add(v); });
+  });
+  return Array.from(set);
+}
+function unsentLogiOptionsHtml(selected) {
+  const opts = allLogiOptions();
+  if (selected && !opts.includes(selected)) opts.unshift(selected);
+  return opts.map(o => `<option ${o===selected?'selected':''}>${escapeHtml(o)}</option>`).join('');
+}
+
 /* 未出貨卡片：不分天，未完成才顯示 */
 function renderUnsentBoard() {
   const card = $('#unsentCard');
@@ -1984,6 +2002,8 @@ function renderUnsentBoard() {
     ).join('') || '<div style="text-align:center;padding:4px 0;font-size:12px;">無件數</div>';
     const note = safeText(rec['備註']);
     const done = isDone(rec['已完成']);
+    const detailLogis = detail.map(d => String(d.物流||'').trim()).filter(Boolean);
+    const defaultLogi = detailLogis[0] || '黑貓';
     return `
        <div class="pf-card ${done ? 'done' : ''}" data-unsent-id="${rec.id}" style="border-left:4px solid var(--stamp-red);cursor:pointer;">
         <div class="pf-platform">
@@ -1992,13 +2012,12 @@ function renderUnsentBoard() {
         </div>
         <div class="pf-details">${detailHtml}</div>
         ${note ? `<div style="font-family:'Noto Sans TC','Noto Serif TC',serif;font-size:12px;color:var(--stamp-red);border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
-        <div class="pf-actions">
+        <div class="pf-actions" style="flex-wrap:wrap;gap:6px;">
           ${done
             ? `<span style="font-size:12px;color:var(--ink-soft);align-self:center;">完成物流：${escapeHtml(safeText(rec['完成物流'])||'黑貓')}</span>
                <button class="btn small ghost" data-unsent-undone="${rec.id}">取消完成</button>`
-            : `
-               <button class="btn small primary" data-unsent-done="${rec.id}" data-done-logi="黑貓">黑貓出貨 ✓</button>
-               <button class="btn small primary" data-unsent-done="${rec.id}" data-done-logi="超商">超商出貨 ✓</button>`}
+            : `<select class="unsent-logi-sel" style="width:100%;height:36px;font-size:14px;padding:0 10px;border-radius:8px;">${unsentLogiOptionsHtml(defaultLogi)}</select>
+               <button class="btn small primary" data-unsent-done="${rec.id}" style="flex:1;">完成出貨 ✓</button>`}
          <button class="btn small ghost" data-unsent-del="${rec.id}">刪除</button>
         </div>
       </div>`;
@@ -2007,7 +2026,9 @@ function renderUnsentBoard() {
   list.querySelectorAll('[data-unsent-done]').forEach(b => {
     b.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const logi = b.dataset.doneLogi || '黑貓';
+      const card = b.closest('.pf-card');
+      const sel  = card ? card.querySelector('.unsent-logi-sel') : null;
+      const logi = sel ? sel.value : '黑貓';
       try {
         await api('updatePlatform', {
           id: b.dataset.unsentDone,
@@ -2048,7 +2069,7 @@ function renderUnsentBoard() {
   // 點卡片本身 → 編輯（避開按鈕）
   list.querySelectorAll('[data-unsent-id]').forEach(card => {
     card.addEventListener('click', (e) => {
-      if (e.target.closest('button')) return;   // 點到完成/刪除不觸發編輯
+      if (e.target.closest('button') || e.target.closest('.pf-actions')) return;   // 點到操作列不觸發編輯
       const rec = state.platforms.find(x => x.id === card.dataset.unsentId);
       if (rec) openPlatformEdit(rec);
     });
