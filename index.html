@@ -1464,6 +1464,17 @@ z-index: 10;
   <div class="card">
     <span class="tape">order ✦ 新 廠 商 單</span>
 
+    <!--  PDF 自動匯入 -->
+    <div id="pdfImportZone" style="border:1.5px dashed var(--line-dark);border-radius:10px;padding:14px 16px;margin-top:24px;margin-bottom:18px;background:var(--paper-2);text-align:center;">
+      <div style="font-size:13px;color:var(--ink-soft);letter-spacing:2px;margin-bottom:8px;">PDF · 自動帶入品項</div>
+      <input type="file" id="pdfImportInput" accept="application/pdf" style="display:none;">
+      <button type="button" class="btn small" id="pdfImportBtn">選擇 PDF</button>
+      <span style="font-size:11px;color:var(--ink-soft);margin-left:8px;">或拖放檔案到這裡</span>
+      <div id="pdfImportStatus" style="margin-top:8px;font-size:12px;color:var(--accent);min-height:16px;"></div>
+    </div>
+
+    <!-- 表頭：廠商資訊，整張單填一次 -->
+
     <!-- 表頭：廠商資訊，整張單填一次 -->
     <div class="form-grid" style="margin-bottom: 20px;">
       <div class="field">
@@ -1687,7 +1698,7 @@ const LS_CACHE = 'shippingDataCache_v1';
 
 const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
 
-const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆'];
+const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','高流'];
 const DEFAULT_ITEMS   = ['胖胖貓','雙手貓','狗','瘦貓','消波塊','龍','一般熊','棒球熊','蟾蜍','山景名片座'];
 const DEFAULT_STYLES  = ['金運','招福','財','富'];
 const DEFAULT_SIZES   = ['巨','大','中','小'];
@@ -2333,13 +2344,19 @@ function computeVendorTodayStats() {
   const today = todayStr();
   let blackcat = 0, cvs = 0;
   const others = {};
+  const seen = new Set();
   state.progress.filter(p => fmtDate(p['完成日期']) === today).forEach(p => {
-    const qty = Number(p['完成數量']) || 0;
-    if (!qty) return;
+    const boxes = Number(p['總箱數']) || 0;
+    if (!boxes) return;
     const logi = String(p['物流公司'] || '').trim();
-    if (logi === '黑貓')            blackcat += qty;
-    else if (logi.includes('超商')) cvs += qty;
-    else if (logi)                  others[logi] = (others[logi] || 0) + qty;
+    // 有批次id就用它（精準）；舊資料沒有就退回原本的條件去重（盡量準）
+    const batch = p['批次id'] ||
+      [p['訂單id'], fmtDate(p['完成日期']), logi, safeText(p['包貨人員']), boxes].join('|');
+    if (seen.has(batch)) return;
+    seen.add(batch);
+    if (logi === '黑貓')            blackcat += boxes;
+    else if (logi.includes('超商')) cvs += boxes;
+    else if (logi)                  others[logi] = (others[logi] || 0) + boxes;
   });
   return { blackcat, cvs, others };
 }
@@ -2580,8 +2597,8 @@ if (!vContainer) {
     <table class="his-table" id="hisVendorTableInner">
     <thead><tr>
       <th style="width:32px;"></th>
-      <th>下單日期</th><th>交期</th><th>廠商</th><th>品項</th>
-      <th>規格</th><th>數量</th><th>完成</th><th>狀態</th><th>備註</th><th></th>
+      <th>下單日期</th><th>交期</th><th>廠商</th><th>內容</th>
+      <th>狀態</th><th>備註</th><th></th>
     </tr></thead><tbody>`;
 
   orders.forEach(o => {
@@ -2596,12 +2613,14 @@ if (!vContainer) {
     const colorHtml = colors.map(c => `<span class="swatch" style="background:${colorOf(c)}"></span>${escapeHtml(c)}`).join(' ');
     const specPieces = [safeText(o['款式']), colorHtml, safeText(o['大小'])].filter(Boolean).join(' / ');
     const itList = Array.isArray(o['items']) && o['items'].length ? o['items'] : null;
-const itemDisplay = itList
-  ? itList.map(it => safeText(it['品項'])).filter(Boolean).join('、')
-  : (safeText(o['品項']) || '—');
-const specDisplay = itList
-  ? itList.map(it => [`【${safeText(it['大小'])}】`, safeText(it['顏色']), safeText(it['款式'])].filter(s => s && s !== '【】').join(' ')).filter(Boolean).join(' / ')
-  : (specPieces || '—');
+    let contentDisplay;
+    if (itList) {
+      let tQty = 0, tDone = 0;
+      itList.forEach(it => { tQty += Number(it['數量'])||0; tDone += itemDoneCount(o.id, it); });
+      contentDisplay = `品項 ${itList.length} 項　${tDone}/${tQty}`;
+    } else {
+      contentDisplay = `${safeText(o['品項'])||'—'}　${done}/${qty}`;
+    }
 
     let statusHtml = '';
     if (isHidden)      statusHtml = '<span class="status-pill" style="border-color:var(--dk-soft);color:var(--dk-soft);">已隱藏</span>';
@@ -2619,10 +2638,7 @@ const specDisplay = itList
       <td>${fmtDate(o['下單日期'])||'—'}</td>
       <td>${o['交期'] ? fmtDate(o['交期']) : '—'}</td>
       <td>${escapeHtml(safeText(o['廠商'])||'—')}</td>
-  <td><b>${escapeHtml(itemDisplay)}</b></td>
-<td>${specDisplay}</td>
-      <td class="num">${qty||'—'}</td>
-      <td class="num ${doneClass}">${qty>0?done:'—'}</td>
+      <td style="font-size:12px;color:var(--dk-soft);">${escapeHtml(contentDisplay)}</td>
       <td>${statusHtml}</td>
       <td style="max-width:200px;white-space:normal;font-size:12px;color:var(--dk-soft);">${escapeHtml(noteCombined)}</td>
       <td>
@@ -3183,13 +3199,14 @@ if (res && res.id && allDone) {
         const q = Number(it['數量']) || 0;
         if (q <= 0) continue;
         await api('addProgress', {
-          '訂單id':   res.id,
-          '完成日期': today,
-          '完成數量': q,
-          '總箱數':   '',
-          '物流公司': '黑貓',
-          '包貨人員': doneStaff,
-          '備註': `${safeText(it['品項'])}【${safeText(it['大小'])}】 ${safeText(it['顏色'])} ${safeText(it['款式'])}`.trim()
+          '訂單id':   o.id,
+          '完成日期': date,
+          '完成數量': e.n,
+          '總箱數':   boxes,
+          '物流公司': logi,
+          '批次id':   batchId,
+          '包貨人員': staff,
+          '備註': `${safeText(e.it['品項'])}【${safeText(e.it['大小'])}】 ${safeText(e.it['顏色'])} ${safeText(e.it['款式'])}`.trim()
         });
       }
     }
@@ -3228,6 +3245,393 @@ $('#btnAddItem').addEventListener('click', () => {
     chk.addEventListener('change', () => { wrap.style.display = chk.checked ? 'block' : 'none'; });
   }
 })();
+
+
+
+
+/* ============ 臺隆採購單 PDF 自動匯入 ============ */
+const PDFJS_SRC    = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+function loadPdfJs() {
+  return new Promise((resolve, reject) => {
+    if (window.pdfjsLib) { resolve(window.pdfjsLib); return; }
+    const s = document.createElement('script');
+    s.src = PDFJS_SRC;
+    s.onload = () => {
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+        resolve(window.pdfjsLib);
+      } else reject(new Error('pdf.js 載入失敗'));
+    };
+    s.onerror = () => reject(new Error('pdf.js 載入失敗（請檢查網路）'));
+    document.head.appendChild(s);
+  });
+}
+
+function pdfDateToIso(d) {
+  const m = String(d || '').match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if (!m) return '';
+  return `${m[1]}-${String(+m[2]).padStart(2,'0')}-${String(+m[3]).padStart(2,'0')}`;
+}
+
+async function extractPdfWords(file) {
+  const lib = await loadPdfJs();
+  const buf = await file.arrayBuffer();
+  const doc = await lib.getDocument({ data: buf }).promise;
+  const words = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const tc = await page.getTextContent();
+    const vh = page.getViewport({ scale: 1 }).height;
+    tc.items.forEach(it => {
+      const t = (it.str || '').trim();
+      if (!t) return;
+      words.push({ pg: p, x: it.transform[4], y: vh - it.transform[5], t });
+    });
+  }
+  return words;
+}
+
+function parseTailongWords(words) {
+  // 依「頁＋y」分行：兩頁頁高相同，不分頁會讓第2頁的出貨須知併進第1頁品項行
+  const ws = words.slice().sort((a,b) => (a.pg - b.pg) || (a.y - b.y) || (a.x - b.x));
+  const lines = [];
+  ws.forEach(w => {
+    const last = lines[lines.length - 1];
+    if (last && last.pg === w.pg && Math.abs(w.y - last.y) <= 3) last.ws.push(w);
+    else lines.push({ pg: w.pg, y: w.y, ws: [w] });
+  });
+  lines.forEach(ln => { ln.ws.sort((a,b) => a.x - b.x); ln.text = ln.ws.map(w => w.t).join(' '); });
+
+  // 表頭：pdf.js 會在每個字間插空格，故用「整行去空白」再比對
+  const flat = lines.map(l => l.text.replace(/\s+/g, '')).join('\n');
+  const orderNo   = (flat.match(/採購單號[:：]([A-Za-z0-9\-]+)/) || [,''])[1];
+  const orderDate = pdfDateToIso((flat.match(/採購日期[:：](\d{4}\/\d{1,2}\/\d{1,2})/) || [,''])[1]);
+  const src       = (flat.match(/來源營運中心[:：]([^\n]+)/) || [,''])[1];
+
+  const QTY  = /(\d{13})\s+(\d{4}\/\d{2}\/\d{2})\s+(\d+)\s*個/;                              // 商品條碼 交貨日 數量 個
+  const NAME = /&[-\s]*([\u4e00-\u9fa5]+)\s*[（(]\s*([\u4e00-\u9fa5]+)\s*[)）]\s*([\u4e00-\u9fa5]+)/; // &-品名(規格)顏色：只吃中文，擋掉混入的說明文字
+
+  const qtyRows = [], nameRows = [];
+  lines.forEach(ln => {
+    const mq = ln.text.match(QTY);
+    if (mq) { qtyRows.push({ pg: ln.pg, y: ln.y, due: mq[2], qty: +mq[3] }); return; }
+    if (ln.text.indexOf('料件編號') >= 0) return;
+    const mn = ln.text.match(NAME);
+    if (mn) nameRows.push({ pg: ln.pg, y: ln.y, name: mn[1], size: mn[2], color: mn[3] });
+  });
+
+  const STYLES     = mergeList(DEFAULT_STYLES, (state.settings || {})['款式']);
+  const BASECOLORS = mergeList(DEFAULT_COLORS, (state.settings || {})['顏色']);
+  const mapColor   = c => { c = String(c || '').replace(/\s+/g, ''); return BASECOLORS.includes(c.slice(-1)) ? c.slice(-1) : c; };
+  const splitItem  = raw => {
+    let name = String(raw || '').replace(/&-?/, '').replace(/\s+/g, '');
+    let style = '';
+    for (const s of STYLES) { if (name.indexOf(s) >= 0) { style = s; name = name.replace(s, ''); break; } }
+    return { item: name, style };
+  };
+
+  const items = nameRows.map(nr => {
+    const above = qtyRows.filter(q => q.pg === nr.pg && q.y < nr.y);   // 只在同一頁配對數量
+    const q = above.length ? above.reduce((b,c) => (nr.y - c.y) < (nr.y - b.y) ? c : b) : null;
+    const { item, style } = splitItem(nr.name);
+    return { '品項': item, '款式': style, '大小': String(nr.size).replace(/\s+/g, ''), '顏色': mapColor(nr.color), '數量': q ? q.qty : 0 };
+  });
+
+  return {
+    '廠商':     '臺隆',
+    '訂單編號': orderNo,
+    '下單日期': orderDate,
+    '交期':     qtyRows.length ? pdfDateToIso(qtyRows[0].due) : '',
+    '備註':     src,
+    items
+  };
+}
+/* ===== 高流（高青生活）採購單 ===== */
+const GAO_SIZE = { '4.5':'小', '6':'中', '8':'大', '15':'巨' };
+
+function parseGaoWords(words) {
+  const ws = words.slice().sort((a,b) => (a.pg - b.pg) || (a.y - b.y) || (a.x - b.x));
+  const lines = [];
+  ws.forEach(w => {
+    const last = lines[lines.length - 1];
+    if (last && last.pg === w.pg && Math.abs(w.y - last.y) <= 3) last.ws.push(w);
+    else lines.push({ pg: w.pg, y: w.y, ws: [w] });
+  });
+  lines.forEach(ln => { ln.ws.sort((a,b) => a.x - b.x); ln.text = ln.ws.map(w => w.t).join(' '); });
+
+  const flat = lines.map(l => l.text.replace(/\s+/g, '')).join('\n');
+  const orderNo   = (flat.match(/採購單號[:：]([A-Za-z0-9\-]+)/) || [,''])[1];
+  const orderDate = pdfDateToIso((flat.match(/採購日期[:：](\d{4}\/\d{1,2}\/\d{1,2})/) || [,''])[1]);
+
+  const ITEMS      = mergeList(DEFAULT_ITEMS,  (state.settings || {})['品項']);
+  const STYLES     = mergeList(DEFAULT_STYLES, (state.settings || {})['款式']);
+  const BASECOLORS = mergeList(DEFAULT_COLORS, (state.settings || {})['顏色']);
+  const mapColor   = c => { c = String(c || '').replace(/\s+/g, ''); return BASECOLORS.includes(c.slice(-1)) ? c.slice(-1) : c; };
+
+  const resolveItem = raw => {
+    let name = String(raw || '').replace(/\s+/g, '');
+    let style = '';
+    for (const s of STYLES) { if (name.indexOf(s) >= 0) { style = s; name = name.replace(s, ''); break; } }
+    if (ITEMS.includes(name)) return { item: name, style };
+    const hit = ITEMS.find(it => String(raw).replace(/\s+/g, '').indexOf(it) >= 0);
+    return hit ? { item: hit, style } : { item: name, style };
+  };
+
+  const LINE = /(\d{10})\s+(.+?)\s+\d+\s+泥研製所\s+(\d+)\s+個/;
+  const items = [];
+  lines.forEach(ln => {
+    const m = ln.text.match(LINE);
+    if (!m) return;
+    let pname = m[2].replace(/\s+/g, '');
+    const qty = +m[3];
+    let size = '';
+    const sm = pname.match(/^(\d+(?:\.\d+)?)cm/i);
+    if (sm) { size = GAO_SIZE[sm[1]] || (sm[1] + 'cm'); pname = pname.slice(sm[0].length); }
+    let color = '', itemRaw = pname;
+    const dash = pname.indexOf('-');
+    if (dash >= 0) { color = pname.slice(0, dash); itemRaw = pname.slice(dash + 1); }
+    const { item, style } = resolveItem(itemRaw);
+    items.push({ '品項': item, '款式': style, '大小': size, '顏色': mapColor(color), '數量': qty });
+  });
+
+  return { '廠商': '高流', '訂單編號': orderNo, '下單日期': orderDate, '交期': '', '備註': '', items };
+}
+/* 各廠商採購單解析器登錄表 */
+const PO_PARSERS = [
+
+  {
+    vendor: '臺隆',
+    detect: full => /臺隆|台隆手創|採購單號[:：]\s*APMA/.test(full),
+    parse:  parseTailongWords
+  },
+ {
+    vendor: '高流',
+    detect: full => /高青|高流|FPO/.test(full),
+   parse:  parseGaoWords
+  },
+  {
+    vendor: '誠品',
+    detect: full => /誠品|EXPO商品採購單/.test(full),
+    parse:  parseEsliteWords
+  },
+];
+
+/* ===== 誠品生活 EXPO 採購單（一檔多單）===== */
+function parseEsliteWords(words) {
+  const ws = words.slice().sort((a,b) => (a.pg - b.pg) || (a.y - b.y) || (a.x - b.x));
+  const lines = [];
+  ws.forEach(w => {
+    const last = lines[lines.length - 1];
+    if (last && last.pg === w.pg && Math.abs(w.y - last.y) <= 3) last.ws.push(w);
+    else lines.push({ pg: w.pg, y: w.y, ws: [w] });
+  });
+  lines.forEach(ln => { ln.ws.sort((a,b) => a.x - b.x); ln.text = ln.ws.map(w => w.t).join(' '); });
+
+  const ITEMS      = mergeList(DEFAULT_ITEMS,  (state.settings || {})['品項']);
+  const STYLES     = mergeList(DEFAULT_STYLES, (state.settings || {})['款式']);
+  const BASECOLORS = mergeList(DEFAULT_COLORS, (state.settings || {})['顏色']);
+  const mapColor   = c => { c = String(c || '').replace(/\s+/g, ''); return BASECOLORS.includes(c.slice(-1)) ? c.slice(-1) : c; };
+  const resolveItem = raw => {
+    let name = String(raw || '').replace(/\s+/g, '');
+    let style = '';
+    for (const s of STYLES) { if (name.indexOf(s) >= 0) { style = s; name = name.replace(s, ''); break; } }
+    if (ITEMS.includes(name)) return { item: name, style };
+    const hit = ITEMS.find(it => String(raw).replace(/\s+/g, '').indexOf(it) >= 0);
+    return hit ? { item: hit, style } : { item: name, style };
+  };
+
+  // 主行：項次 原碼 [氺の尼 泥研製所品名/] 誠品商品碼(13) 數量 …；規格在下一行
+  const MAIN = /^(\d+)\s+(\S+)\s+(.+?)\s+(\d{13})\s+(\d+)\s+/;
+
+  const pages = {};
+  lines.forEach(l => { (pages[l.pg] = pages[l.pg] || []).push(l); });
+
+  const orderMap = {};   // 採購單號 → 訂單（同單號跨頁自動合併）
+  Object.keys(pages).map(Number).sort((a,b) => a - b).forEach(pg => {
+    const pls = pages[pg];
+    const ptext = pls.map(l => l.text).join('\n');
+    const orderNo = (ptext.match(/採購單號\s*[:：]\s*(\d+)/) || [,''])[1];
+    if (!orderNo) return;
+    if (!orderMap[orderNo]) {
+      orderMap[orderNo] = {
+        '訂單編號': orderNo,
+        '下單日期': pdfDateToIso((ptext.match(/採購單日期\s*[:：]\s*(\d{4}\/\d{1,2}\/\d{1,2})/) || [,''])[1]),
+        '交期':    pdfDateToIso((ptext.match(/應交貨日期\s*[:：]\s*(\d{4}\/\d{1,2}\/\d{1,2})/) || [,''])[1]),
+        '備註':    (ptext.match(/送貨點\s*[:：]\s*(.+?)\s+應交貨日期/) || [,''])[1].trim(),
+        items: []
+      };
+    }
+    const ord = orderMap[orderNo];
+    for (let i = 0; i < pls.length; i++) {
+      const m = pls[i].text.match(MAIN);
+      if (!m) continue;
+      let head = m[3].replace(/氺の尼/g, '').replace(/泥研製所/g, '').replace(/[\/／]\s*$/, '').replace(/\s+/g, '');
+      const qty = +m[5];
+      const toks = ((pls[i+1] && pls[i+1].text) || '').split(/[\/／]/).map(t => t.trim()).filter(Boolean);
+      let size = '', color = '';
+      toks.forEach(t => {
+        const sm = t.match(/(\d+(?:\.\d+)?)cm/i);
+        if (sm) { size = GAO_SIZE[sm[1]] || (sm[1] + 'cm'); return; }
+        if (/單入/.test(t)) return;
+        if (!color) color = t;
+      });
+      const { item, style } = resolveItem(head);
+      ord.items.push({ '品項': item, '款式': style, '大小': size, '顏色': mapColor(color), '數量': qty, '附加': '', '已完成': false });
+    }
+  });
+
+  const orders = Object.keys(orderMap).map(k => orderMap[k]).filter(o => o.items.length);
+  return { multi: true, '廠商': '誠品', orders };
+}
+  
+
+
+function parsePurchaseOrder(words) {
+  const full = words.map(w => w.t).join(' ');
+  const p = PO_PARSERS.find(x => x.detect(full));
+  if (!p) throw new Error('無法辨識採購單格式（目前支援：' + PO_PARSERS.map(x => x.vendor).join('、') + '）');
+  return p.parse(words);
+}
+// 把解析不到對應選項的值塞進該列（避免下拉選不到）
+function ensureItemRowValues(row, it) {
+  const setSel = (sel, val) => {
+    if (!val || !sel) return;
+    if (!Array.from(sel.options).some(o => o.value === val))
+      sel.insertAdjacentHTML('beforeend', `<option>${escapeHtml(val)}</option>`);
+    sel.value = val;
+  };
+  setSel(row.querySelector('.fi-item'),  it['品項']);
+  setSel(row.querySelector('.fi-style'), it['款式']);
+  setSel(row.querySelector('.fi-size'),  it['大小']);
+  if (it['顏色']) {
+    const wrap = row.querySelector('.fi-colors');
+    if (wrap && !wrap.querySelector(`.color-chip[data-color="${cssEscape(it['顏色'])}"]`)) {
+      const addBtn = wrap.querySelector('.color-add');
+      const chip = document.createElement('div');
+      chip.className = 'color-chip on';
+      chip.dataset.color = it['顏色'];
+      chip.innerHTML = `<span class="swatch" style="background:${colorOf(it['顏色'])}"></span><span>${escapeHtml(it['顏色'])}</span>`;
+      chip.addEventListener('click', () => {
+        const wasOn = chip.classList.contains('on');
+        wrap.querySelectorAll('.color-chip').forEach(c => c.classList.remove('on'));
+        if (!wasOn) chip.classList.add('on');
+      });
+      wrap.insertBefore(chip, addBtn);
+    }
+  }
+}
+
+function applyParsed(parsed) {
+  const vendor = parsed['廠商'] || '';
+  const vsel = $('#f_vendor');
+  if (vsel && vendor) {
+    if (!Array.from(vsel.options).some(o => o.value === vendor))
+      vsel.insertAdjacentHTML('beforeend', `<option>${escapeHtml(vendor)}</option>`);
+    vsel.value = vendor;
+  }
+  if (parsed['訂單編號']) $('#f_order_no').value = parsed['訂單編號'];
+  if (parsed['下單日期']) $('#f_date').value     = parsed['下單日期'];
+  if (parsed['交期'])     $('#f_due').value      = parsed['交期'];
+  if (parsed['備註']) {
+    const n = $('#f_note');
+    n.value = n.value ? (n.value + ' ' + parsed['備註']) : parsed['備註'];
+  }
+  itemCounter = 0;
+  const list = $('#f_items_list');
+  list.innerHTML = '';
+  parsed.items.forEach(it => {
+    const row = createItemRow(it);
+    list.appendChild(row);
+    ensureItemRowValues(row, it);
+  });
+  if (!parsed.items.length) list.appendChild(createItemRow());
+}
+async function applyParsedMulti(parsed, statusEl) {
+  if (!API_URL) { toast('請先設定 API 網址', true); return; }
+  const orders = (parsed.orders || []).filter(o => o.items && o.items.length);
+  const totalItems = orders.reduce((s,o) => s + o.items.length, 0);
+  if (!orders.length || !totalItems) {
+    if (statusEl) statusEl.textContent = '⚠ 沒抓到品項，請確認 PDF 格式';
+    toast('沒抓到品項', true); return;
+  }
+  if (!confirm(`偵測到 ${orders.length} 張${parsed['廠商']||''}採購單、共 ${totalItems} 個品項。\n確定直接建立 ${orders.length} 筆廠商訂單？`)) {
+    if (statusEl) statusEl.textContent = '已取消';
+    return;
+  }
+  let ok = 0;
+  for (const o of orders) {
+    const first = o.items[0] || {};
+    try {
+      await api('addOrder', {
+        '下單日期': o['下單日期'] || todayStr(),
+        '交期':    o['交期'] || '',
+        '廠商':    parsed['廠商'] || '',
+        '品項':    first['品項'] || '',
+        '款式':    first['款式'] || '',
+        '顏色':    first['顏色'] || '',
+        '大小':    first['大小'] || '',
+        '數量':    first['數量'] || '',
+        '附加':    '',
+        '訂單編號': o['訂單編號'] || '',
+        '備註':    o['備註'] || '',
+        'items':   o.items
+      });
+      ok++;
+      if (statusEl) statusEl.textContent = `匯入中… ${ok}/${orders.length}`;
+    } catch (e) { console.error(e); }
+  }
+  if (statusEl) statusEl.textContent = `✓ 已建立 ${ok}/${orders.length} 筆訂單`;
+  toast(`已建立 ${ok} 筆${parsed['廠商']||''}訂單`);
+  await loadAll();
+  switchTab('board');
+}
+(function bindPdfImport() {
+  const zone   = document.getElementById('pdfImportZone');
+  const input  = document.getElementById('pdfImportInput');
+  const status = document.getElementById('pdfImportStatus');
+  if (!zone || !input) return;
+
+  document.getElementById('pdfImportBtn')?.addEventListener('click', () => input.click());
+
+  async function handle(file) {
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { toast('請選擇 PDF 檔', true); return; }
+    status.textContent = '解析中…';
+    try {
+      const words  = await extractPdfWords(file);
+      const parsed = parsePurchaseOrder(words);
+      if (parsed.multi) {
+  if (parsed.orders.length === 1) {
+    const o = parsed.orders[0];
+    applyParsed({ '廠商': parsed['廠商'], ...o });   // 單張 → 進表單
+    status.textContent = `✓ 已帶入 1 張（單號 ${o['訂單編號']||'—'}），請確認後送出`;
+  } else {
+    await applyParsedMulti(parsed, status);          // 多張 → 批次直接建
+  }
+  return;
+}
+      if (!parsed.items.length) { status.textContent = '⚠ 沒抓到品項，請確認 PDF 格式'; toast('沒抓到品項', true); return; }
+      applyParsed(parsed);
+      status.textContent = `✓ 已匯入 ${parsed.items.length} 個品項（單號 ${parsed['訂單編號'] || '—'}）`;
+      toast(`已匯入 ${parsed.items.length} 個品項`);
+    } catch (e) {
+      console.error(e);
+      status.textContent = '✗ ' + e.message;
+      toast('解析失敗：' + e.message, true);
+    } finally { input.value = ''; }
+  }
+
+  input.addEventListener('change', () => handle(input.files[0]));
+  ['dragover','dragenter'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.style.borderColor = 'var(--accent)'; }));
+  ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.style.borderColor = ''; }));
+  zone.addEventListener('drop', e => handle(e.dataTransfer.files[0]));
+})();
+
+
+
+
 /* ============ 新增選項 ============ */
 let addCategory = '';
 function openAddModal(cat) {
@@ -3583,7 +3987,7 @@ function getSelectedStaff() {
 async function addOrderProgress() {
   const o = currentOrder; if (!o) return;
   const itListCur = Array.isArray(o['items']) && o['items'].length ? o['items'] : null;
-
+  const batchId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   if (itListCur) {
     const entries = [];
     $('#omBody').querySelectorAll('.it-qty').forEach(inp => {
