@@ -1702,7 +1702,7 @@ const LS_CACHE = 'shippingDataCache_v1';
 
 const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
 
-const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','高流'];
+const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','林百貨'];
 const DEFAULT_ITEMS   = ['胖胖貓','雙手貓','狗','瘦貓','消波塊','龍','一般熊','棒球熊','蟾蜍','山景名片座'];
 const DEFAULT_STYLES  = ['金運','招福','財','富'];
 const DEFAULT_SIZES   = ['巨','大','中','小'];
@@ -3386,11 +3386,12 @@ function parseTailongWords(words) {
     '訂單編號': orderNo,
     '下單日期': orderDate,
     '交期':     qtyRows.length ? pdfDateToIso(qtyRows[0].due) : '',
-    '備註':     src,
+    '門市':     src,
+    '備註':     '',
     items
   };
 }
-/* ===== 高流（高青生活）採購單 ===== */
+/* ===== 林百貨（高青生活）採購單 ===== */
 const GAO_SIZE = { '4.5':'小', '6':'中', '8':'大', '15':'巨' };
 
 function parseGaoWords(words) {
@@ -3438,7 +3439,7 @@ function parseGaoWords(words) {
     items.push({ '品項': item, '款式': style, '大小': size, '顏色': mapColor(color), '數量': qty });
   });
 
-  return { '廠商': '高流', '訂單編號': orderNo, '下單日期': orderDate, '交期': '', '備註': '', items };
+  return { '廠商': '林百貨', '訂單編號': orderNo, '下單日期': orderDate, '交期': '', '備註': '', items };
 }
 /* ===== 木酢達人（Blue）出貨單 → 盛發 ===== */
 function parseBlueWords(words) {
@@ -3503,8 +3504,8 @@ const PO_PARSERS = [
     parse:  parseTailongWords
   },
   {
-    vendor: '高流',
-    detect: full => /高青|高流|FPO/.test(full),
+    vendor: '林百貨',
+    detect: full => /高青|林百貨|FPO/.test(full),
     parse:  parseGaoWords
   },
   {
@@ -3559,7 +3560,8 @@ function parseEsliteWords(words) {
         '訂單編號': orderNo,
         '下單日期': pdfDateToIso((ptext.match(/採購單日期\s*[:：]\s*(\d{4}\/\d{1,2}\/\d{1,2})/) || [,''])[1]),
         '交期':    pdfDateToIso((ptext.match(/應交貨日期\s*[:：]\s*(\d{4}\/\d{1,2}\/\d{1,2})/) || [,''])[1]),
-        '備註':    (ptext.match(/送貨點\s*[:：]\s*(.+?)\s+應交貨日期/) || [,''])[1].trim(),
+        '門市':    (ptext.match(/送貨點\s*[:：]\s*(.+?)(?=應交貨日期)/) || [,''])[1].trim().replace(/創意設計-/, ''),
+        '備註':    '',
         items: []
       };
     }
@@ -3664,14 +3666,9 @@ function applyParsed(parsed) {
     const s = $('#f_store');
     if (!s.value) s.value = parsed['門市'];
   }
-  if (parsed['備註']) {
-    if (parsed['門市'] !== undefined) {       // 新格式（有門市欄）→ 備註進備註欄
-      const n = $('#f_note');
-      if (n && !n.value) n.value = parsed['備註'];
-    } else {                                   // 舊格式（臺隆等）→ 維持原行為
-      const s = $('#f_store');
-      s.value = s.value ? s.value : parsed['備註'];
-    }
+ if (parsed['備註']) {
+    const n = $('#f_note');
+    if (n && !n.value) n.value = parsed['備註'];
   }
   itemCounter = 0;
   const list = $('#f_items_list');
@@ -3704,6 +3701,7 @@ async function applyParsedMulti(parsed, statusEl) {
         '下單日期': o['下單日期'] || todayStr(),
         '交期':    o['交期'] || '',
         '廠商':    parsed['廠商'] || '',
+        '門市':    o['門市'] || '',
         '品項':    first['品項'] || '',
         '款式':    first['款式'] || '',
         '顏色':    first['顏色'] || '',
