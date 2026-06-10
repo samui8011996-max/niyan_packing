@@ -2605,7 +2605,7 @@ if (!vContainer) {
     <table class="his-table" id="hisVendorTableInner">
     <thead><tr>
       <th style="width:32px;"></th>
-      <th>下單日期</th><th>交期</th><th>廠商</th><th>內容</th>
+      <th>下單日期</th><th>交期</th><th>完成日</th><th>廠商</th><th>內容</th>
       <th>狀態</th><th>備註</th><th></th>
     </tr></thead><tbody>`;
 
@@ -2645,6 +2645,7 @@ if (!vContainer) {
       <td><input type="checkbox" class="v-sel-chk" data-id="${o.id}" style="width:15px;height:15px;" ${checked}></td>
       <td>${fmtDate(o['下單日期'])||'—'}</td>
       <td>${o['交期'] ? fmtDate(o['交期']) : '—'}</td>
+      <td>${isDone ? (orderDoneDate(o) || fmtDate(o['完成日期']) || '—') : '—'}</td>
       <td>${escapeHtml(safeText(o['廠商'])||'—')}${safeText(o['門市'])?`<br><b style="font-size:12px;">${escapeHtml(safeText(o['門市']))}</b>`:''}</td>
       <td style="font-size:12px;color:var(--dk-soft);">${escapeHtml(contentDisplay)}</td>
       <td>${statusHtml}</td>
