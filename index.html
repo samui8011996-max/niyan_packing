@@ -1493,6 +1493,10 @@ z-index: 10;
         </div>
       </div>
       <div class="field">
+        <label>門 市</label>
+        <input type="text" id="f_store" placeholder="選填">
+      </div>
+      <div class="field">
         <label>訂 單 編 號</label>
         <input type="text" id="f_order_no" placeholder="選填，如 PO-2026-001">
       </div>
@@ -2386,7 +2390,7 @@ function renderVendorTodayStats() {
 
 function renderVendorBoard() {
   const list = $('#vendorList');
-  // renderVendorTodayStats();   // 統計區暫時關閉，未發布
+  renderVendorTodayStats();   // 統計區暫時關閉，未發布
   let orders = state.orders.slice();
 
   const visibleAll = orders.filter(o => !hiddenVendor.has(o.id));
@@ -2483,12 +2487,15 @@ const itColors = String(it['顏色'] || '').split(/[、,，]/).map(c => c.trim()
             下單 ${fmtDate(o['下單日期']) || '—'}
             ${o['交期'] ? `<span class="due">／ 交期 ${fmtDate(o['交期'])}</span>` : ''}
           </div>
-          ${safeText(o['廠商']) ? `<div class="vc-vendor">${escapeHtml(safeText(o['廠商']))}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+            ${safeText(o['廠商']) ? `<div class="vc-vendor" style="margin-bottom:0;">${escapeHtml(safeText(o['廠商']))}</div>` : ''}
+            ${safeText(o['門市']) ? `<span style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:500;color:var(--ink);letter-spacing:1px;">${escapeHtml(safeText(o['門市']))}</span>` : ''}
+          </div>
           ${itemsSection}
           ${orderNo ? `<div class="vc-note" style="color:var(--stamp-blue);font-size:12px;">🔖 ${escapeHtml(orderNo)}</div>` : ''}
           ${note ? `<div class="vc-note">${escapeHtml(note)}</div>` : ''}
         </div>
-      `;
+      `;0
     }).join('');
   }
 
@@ -2637,7 +2644,7 @@ if (!vContainer) {
       <td><input type="checkbox" class="v-sel-chk" data-id="${o.id}" style="width:15px;height:15px;" ${checked}></td>
       <td>${fmtDate(o['下單日期'])||'—'}</td>
       <td>${o['交期'] ? fmtDate(o['交期']) : '—'}</td>
-      <td>${escapeHtml(safeText(o['廠商'])||'—')}</td>
+      <td>${escapeHtml(safeText(o['廠商'])||'—')}${safeText(o['門市'])?`<br><b style="font-size:12px;">${escapeHtml(safeText(o['門市']))}</b>`:''}</td>
       <td style="font-size:12px;color:var(--dk-soft);">${escapeHtml(contentDisplay)}</td>
       <td>${statusHtml}</td>
       <td style="max-width:200px;white-space:normal;font-size:12px;color:var(--dk-soft);">${escapeHtml(noteCombined)}</td>
@@ -3106,6 +3113,7 @@ function resetVendorForm() {
   $('#f_due').value      = '';
   $('#f_vendor').value   = '';
   $('#f_order_no').value = '';
+  $('#f_store').value    = '';
 $('#f_note').value     = '';
   const allDoneChk = $('#f_all_done');
   if (allDoneChk) allDoneChk.checked = false;
@@ -3180,6 +3188,7 @@ const res = await api('addOrder', {
   '下單日期':  $('#f_date').value,
   '交期':      $('#f_due').value,
   '廠商':      $('#f_vendor').value,
+  '門市':      $('#f_store').value.trim(),
   '品項':      firstItem['品項'] || '',
   '款式':      firstItem['款式'] || '',
   '顏色':      firstItem['顏色'] || '',
@@ -3199,14 +3208,13 @@ if (res && res.id && allDone) {
         const q = Number(it['數量']) || 0;
         if (q <= 0) continue;
         await api('addProgress', {
-          '訂單id':   o.id,
-          '完成日期': date,
-          '完成數量': e.n,
-          '總箱數':   boxes,
-          '物流公司': logi,
-          '批次id':   batchId,
-          '包貨人員': staff,
-          '備註': `${safeText(e.it['品項'])}【${safeText(e.it['大小'])}】 ${safeText(e.it['顏色'])} ${safeText(e.it['款式'])}`.trim()
+          '訂單id':   res.id,
+          '完成日期': today,
+          '完成數量': q,
+          '總箱數':   '',
+          '物流公司': '黑貓',
+          '包貨人員': doneStaff,
+          '備註': `${safeText(it['品項'])}【${safeText(it['大小'])}】 ${safeText(it['顏色'])} ${safeText(it['款式'])}`.trim()
         });
       }
     }
@@ -3535,8 +3543,8 @@ function applyParsed(parsed) {
   if (parsed['下單日期']) $('#f_date').value     = parsed['下單日期'];
   if (parsed['交期'])     $('#f_due').value      = parsed['交期'];
   if (parsed['備註']) {
-    const n = $('#f_note');
-    n.value = n.value ? (n.value + ' ' + parsed['備註']) : parsed['備註'];
+    const s = $('#f_store');
+    s.value = s.value ? s.value : parsed['備註'];
   }
   itemCounter = 0;
   const list = $('#f_items_list');
@@ -3766,6 +3774,7 @@ const note    = safeText(o['備註']);
 let html = `
     <div style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;line-height:1.8;">
       ${meta}
+      ${safeText(o['門市'])?`<br><b style="font-size:15px;font-weight:700;">🏪 ${escapeHtml(safeText(o['門市']))}</b>`:''}
       ${orderNo?'<br>🔖 '+escapeHtml(orderNo):''}
       ${note?'<br>📝 '+escapeHtml(note):''}
     </div>
@@ -4019,6 +4028,7 @@ async function addOrderProgress() {
           '完成數量': e.n,
           '總箱數':   boxes,
           '物流公司': logi,
+          '批次id':   batchId,
           '包貨人員': staff,
           '備註': `${safeText(e.it['品項'])}【${safeText(e.it['大小'])}】 ${safeText(e.it['顏色'])} ${safeText(e.it['款式'])}`.trim()
         });
@@ -4090,6 +4100,10 @@ function openOrderEdit(o) {
         <label>廠商</label>
         <select id="e_vendor">${opts(mergeList(DEFAULT_VENDORS, s['廠商']), safeText(o['廠商']))}</select>
       </div>
+      <div class="field">
+        <label>門市</label>
+        <input type="text" id="e_store" value="${escapeAttr(safeText(o['門市']))}">
+      </div>
       <div class="field full">
         <label>訂單編號</label>
         <input type="text" id="e_order_no" value="${escapeAttr(safeText(o['訂單編號']))}">
@@ -4105,7 +4119,7 @@ function openOrderEdit(o) {
     </div>
   `;
 $('#efSave').addEventListener('click', async () => {
-    const saveBtn = $('#eSave');
+    const saveBtn = $('#efSave');
     const allBtns = $('#omBody').querySelectorAll('button, input, select, textarea');
     saveBtn.disabled = true;
     saveBtn.textContent = '上傳中…';
@@ -4119,6 +4133,7 @@ $('#efSave').addEventListener('click', async () => {
   '下單日期': $('#e_date').value,
   '交期':    $('#e_due').value,
   '廠商':    $('#e_vendor').value,
+  '門市':    $('#e_store').value.trim(),
   '訂單編號': $('#e_order_no').value,
   '備註':    $('#e_note').value
 });
