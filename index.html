@@ -2182,8 +2182,8 @@ function renderPlatformBoard() {
   const baseOrder = boardNames;
   const rankOf = (name) => {
     const rec = byPlatform[name];
-    if (!rec) return 1;                       // 未填寫
-    return isDone(rec['已完成']) ? 2 : 0;     // 已完成=2、未完成有資料=0
+    if (!rec) return 2;                       // 未填寫 → 最後
+    return isDone(rec['已完成']) ? 1 : 0;     // 已完成=1、未完成有資料=0
   };
   visibleNames = visibleNames.slice().sort((a, b) => {
     const ra = rankOf(a), rb = rankOf(b);
@@ -3406,26 +3406,84 @@ function parseGaoWords(words) {
 
   return { '廠商': '高流', '訂單編號': orderNo, '下單日期': orderDate, '交期': '', '備註': '', items };
 }
+/* ===== 木酢達人（Blue）出貨單 → 盛發 ===== */
+function parseBlueWords(words) {
+  const ws = words.slice().sort((a,b) => (a.pg - b.pg) || (a.y - b.y) || (a.x - b.x));
+  const lines = [];
+  ws.forEach(w => {
+    const last = lines[lines.length - 1];
+    if (last && last.pg === w.pg && Math.abs(w.y - last.y) <= 3) last.ws.push(w);
+    else lines.push({ pg: w.pg, y: w.y, ws: [w] });
+  });
+  lines.forEach(ln => { ln.ws.sort((a,b) => a.x - b.x); ln.text = ln.ws.map(w => w.t).join(' '); });
+
+  const flat = lines.map(l => l.text.replace(/\s+/g, '')).join('\n');
+  const orderNo   = (flat.match(/單號[:：]?\s*(\d{6,})/) || [,''])[1];
+  const orderDate = pdfDateToIso((flat.match(/訂單日期\s*(\d{4}\/\d{1,2}\/\d{1,2})/) || [,''])[1]);
+  const store     = (flat.match(/訂購人(.+?)收貨聯絡人/) || [,''])[1].trim();
+
+  // 品名 → 品項對照（木酢達人多為單一商品，之後新品項加一列即可）
+  const ITEM_MAP = [
+    { re: /熊炭吉|台灣黑熊|黑熊/, item: '一般熊', add: '木片' },
+  ];
+
+  const rows = [];
+  lines.forEach(ln => {
+    const qtyW = ln.ws.find(w => /\d+\s*ppc/i.test(w.t));   // pdf.js 把「48 ppc」整塊當一個詞
+    if (!qtyW) return;
+    const qty  = +(qtyW.t.match(/(\d+)\s*ppc/i)[1]);
+    const nameWs = ln.ws.filter(w => w.x < 290 && /[\u4e00-\u9fa5]/.test(w.t));
+    const name = nameWs.map(w => w.t).join('');
+    if (!name || /稅額|運費|折抵|總計|小計/.test(name)) return;   // 略過稅額等
+    const note = ln.ws.filter(w => w.x >= 290 && w.x < qtyW.x).map(w => w.t).join('');
+    const hit  = ITEM_MAP.find(m => m.re.test(name));
+    rows.push({
+      '品項': hit ? hit.item : name,
+      '款式': '', '大小': '', '顏色': '',
+      '數量': qty,
+      '附加': hit ? hit.add : '',
+      '已完成': false,
+      _note: note
+    });
+  });
+
+  const orderNote = (rows.find(r => r._note) || {})._note || '';
+  const items = rows.map(({ _note, ...rest }) => rest);
+
+  return {
+    '廠商':     '盛發',
+    '訂單編號': orderNo,
+    '下單日期': orderDate,
+    '交期':     '',
+    '門市':     store,
+    '備註':     orderNote,
+    items
+  };
+}
+/* 各廠商採購單解析器登錄表 */
 /* 各廠商採購單解析器登錄表 */
 const PO_PARSERS = [
-
   {
     vendor: '臺隆',
     detect: full => /臺隆|台隆手創|採購單號[:：]\s*APMA/.test(full),
     parse:  parseTailongWords
   },
- {
+  {
     vendor: '高流',
     detect: full => /高青|高流|FPO/.test(full),
-   parse:  parseGaoWords
+    parse:  parseGaoWords
   },
   {
     vendor: '誠品',
     detect: full => /誠品|EXPO商品採購單/.test(full),
     parse:  parseEsliteWords
   },
+  {
+    vendor: '盛發',
+    detect: full => /木酢達人|廠商-Blue|木\s*酢\s*達\s*人/.test(full),
+    parse:  parseBlueWords
+  },
 ];
-
 /* ===== 誠品生活 EXPO 採購單（一檔多單）===== */
 function parseEsliteWords(words) {
   const ws = words.slice().sort((a,b) => (a.pg - b.pg) || (a.y - b.y) || (a.x - b.x));
@@ -3530,7 +3588,33 @@ function ensureItemRowValues(row, it) {
     }
   }
 }
-
+function applyItemAdditional(row, addStr) {
+  if (!addStr) return;
+  const i = row.dataset.itemIdx;
+  const on = (pack, text) => {
+    row.querySelector(`.fi-chip[data-pack="${pack}"]`)?.classList.add('on');
+    row.querySelector(`#fi-pack-${pack}-${i}`)?.classList.add('show');
+    if (text) {
+      const map = { seal: '.fi-seal', card: '.fi-card', wood: '.fi-wood' };
+      const el = map[pack] ? row.querySelector(map[pack]) : null;
+      if (el) el.value = text;
+    }
+  };
+  String(addStr).split(/[、,，]/).map(s => s.trim()).filter(Boolean).forEach(p => {
+    const paren = (p.match(/[（(]([^）)]*)[)）]/) || [,''])[1].trim();
+    if (/精油/.test(p)) {
+      on('oil');
+      const sz = (p.match(/(\d+\s*ml)/i) || [,''])[1].replace(/\s+/g, '');
+      if (sz) { const el = row.querySelector('.fi-oil-size'); if (el) el.value = sz; }
+      if (paren) { const el = row.querySelector('.fi-oil-flavor'); if (el && [...el.options].some(o => o.value === paren)) el.value = paren; }
+    }
+    else if (/紙盒/.test(p)) on('box');
+    else if (/裸裝/.test(p)) on('bare');
+    else if (/封條/.test(p)) on('seal', paren);
+    else if (/小卡/.test(p)) on('card', paren);
+    else if (/木片/.test(p)) on('wood', paren);
+  });
+}
 function applyParsed(parsed) {
   const vendor = parsed['廠商'] || '';
   const vsel = $('#f_vendor');
@@ -3542,17 +3626,27 @@ function applyParsed(parsed) {
   if (parsed['訂單編號']) $('#f_order_no').value = parsed['訂單編號'];
   if (parsed['下單日期']) $('#f_date').value     = parsed['下單日期'];
   if (parsed['交期'])     $('#f_due').value      = parsed['交期'];
-  if (parsed['備註']) {
+  if (parsed['門市']) {
     const s = $('#f_store');
-    s.value = s.value ? s.value : parsed['備註'];
+    if (!s.value) s.value = parsed['門市'];
+  }
+  if (parsed['備註']) {
+    if (parsed['門市'] !== undefined) {       // 新格式（有門市欄）→ 備註進備註欄
+      const n = $('#f_note');
+      if (n && !n.value) n.value = parsed['備註'];
+    } else {                                   // 舊格式（臺隆等）→ 維持原行為
+      const s = $('#f_store');
+      s.value = s.value ? s.value : parsed['備註'];
+    }
   }
   itemCounter = 0;
   const list = $('#f_items_list');
   list.innerHTML = '';
-  parsed.items.forEach(it => {
+ parsed.items.forEach(it => {
     const row = createItemRow(it);
     list.appendChild(row);
     ensureItemRowValues(row, it);
+    applyItemAdditional(row, it['附加']);
   });
   if (!parsed.items.length) list.appendChild(createItemRow());
 }
