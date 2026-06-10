@@ -2386,7 +2386,7 @@ function renderVendorTodayStats() {
 
 function renderVendorBoard() {
   const list = $('#vendorList');
-  renderVendorTodayStats();
+  // renderVendorTodayStats();   // 統計區暫時關閉，未發布
   let orders = state.orders.slice();
 
   const visibleAll = orders.filter(o => !hiddenVendor.has(o.id));
