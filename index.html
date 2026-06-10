@@ -1702,7 +1702,7 @@ const LS_CACHE = 'shippingDataCache_v1';
 
 const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
 
-const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','林百貨'];
+const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','高流','林百貨'];
 const DEFAULT_ITEMS   = ['胖胖貓','雙手貓','狗','瘦貓','消波塊','龍','一般熊','棒球熊','蟾蜍','山景名片座'];
 const DEFAULT_STYLES  = ['金運','招福','財','富'];
 const DEFAULT_SIZES   = ['巨','大','中','小'];
@@ -3391,7 +3391,7 @@ function parseTailongWords(words) {
     items
   };
 }
-/* ===== 林百貨（高青生活）採購單 ===== */
+/* ===== 高流（高青生活）採購單 ===== */
 const GAO_SIZE = { '4.5':'小', '6':'中', '8':'大', '15':'巨' };
 
 function parseGaoWords(words) {
@@ -3439,7 +3439,12 @@ function parseGaoWords(words) {
     items.push({ '品項': item, '款式': style, '大小': size, '顏色': mapColor(color), '數量': qty });
   });
 
-  return { '廠商': '林百貨', '訂單編號': orderNo, '下單日期': orderDate, '交期': '', '備註': '', items };
+  // 送貨地址判斷廠商：林百貨 → 林百貨，其餘 → 高流
+  const deliveryAddr = (flat.match(/送貨地址[:：]?\s*(.+?)(?=帳單地址|付款條件|供應廠商|$)/s) || [,''])[1];
+  const vendor = /林百貨/.test(deliveryAddr) ? '林百貨' : '高流';
+
+  // 門市：取送貨地址第二行關鍵字（林百貨倉庫 / Focus珊瑚廣場等）
+  return { '廠商': vendor, '訂單編號': orderNo, '下單日期': orderDate, '交期': '', '備註': '', items };
 }
 /* ===== 木酢達人（Blue）出貨單 → 盛發 ===== */
 function parseBlueWords(words) {
@@ -3504,8 +3509,8 @@ const PO_PARSERS = [
     parse:  parseTailongWords
   },
   {
-    vendor: '林百貨',
-    detect: full => /高青|林百貨|FPO/.test(full),
+    vendor: '高流',
+    detect: full => /高青|高流|FPO/.test(full),
     parse:  parseGaoWords
   },
   {
