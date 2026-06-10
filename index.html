@@ -2207,7 +2207,6 @@ function renderPlatformBoard() {
         : '';
       return `
         <div class="pf-card" style="border-style:${dedE.total>0?'solid':'dashed'};opacity:${dedE.total>0?'1':'0.55'};" data-empty-platform="${escapeAttr(name)}">
-          <button class="card-hide-btn" data-hide-pf="${escapeAttr(hideKey)}" title="隱藏">×</button>
           <div class="pf-platform">
             <span>${name}</span>
             <span class="pf-tag" style="background: var(--line-dark);">${dedE.total>0?'扣':'無'}</span>
@@ -2245,7 +2244,7 @@ function renderPlatformBoard() {
       }
       return `
       <div class="pf-card ${isDone(rec['已完成']) ? 'done' : ''}" data-id="${rec.id}">
-          <button class="card-hide-btn" data-hide-pf="${escapeAttr(hideKey)}" title="隱藏">×</button>
+          
           <div class="pf-platform"><span>${name}</span></div>
           <div class="pf-total"><span class="label">總</span>${rec['總件數']||0}</div>
           <div class="pf-details">${detailHtml}${dedHtml}</div>
@@ -2387,15 +2386,26 @@ function renderVendorTodayStats() {
   });
   el.innerHTML = `<div class="logi-summary">${chips}</div>`;
 }
-
+/* 廠商訂單完成日 = 進度中最後一筆完成日期 */
+function orderDoneDate(o) {
+  const ds = progressOf(o.id).map(p => fmtDate(p['完成日期'])).filter(Boolean).sort();
+  return ds.length ? ds[ds.length - 1] : '';
+}
 function renderVendorBoard() {
   const list = $('#vendorList');
   renderVendorTodayStats();   // 統計區暫時關閉，未發布
+  const today = todayStr();
   let orders = state.orders.slice();
 
-  const visibleAll = orders.filter(o => !hiddenVendor.has(o.id));
-  const hiddenCount = orders.length - visibleAll.length;
-  orders = visibleAll;
+  // 手動隱藏 → 不顯示；已完成 → 只在完成當天顯示，隔天自動從公告消失（歷史仍可查）
+  orders = orders.filter(o => {
+    if (hiddenVendor.has(o.id)) return false;
+    if (isOrderDone(o)) {
+      const dd = orderDoneDate(o);
+      if (dd && dd !== today) return false;
+    }
+    return true;
+  });
 
   // 狀態篩選：統一用 isOrderDone
   if (vendorFilter === 'open') {
@@ -2500,16 +2510,7 @@ const itColors = String(it['顏色'] || '').split(/[、,，]/).map(c => c.trim()
   }
 
   const toggle = $('#vendorHiddenToggle');
-  if (hiddenCount > 0) {
-    toggle.innerHTML = `<button id="vendorShowHidden">顯示已隱藏的 ${hiddenCount} 個</button>`;
-    $('#vendorShowHidden').addEventListener('click', () => {
-      hiddenVendor.clear();
-      saveHidden();
-      renderVendorBoard();
-    });
-  } else {
-    toggle.innerHTML = '';
-  }
+  if (toggle) toggle.innerHTML = '';   // 已隱藏一律在歷史紀錄查看／恢復
 
   list.querySelectorAll('[data-hide-v]').forEach(btn => {
     btn.addEventListener('click', (e) => {
