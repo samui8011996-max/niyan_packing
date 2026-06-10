@@ -1783,6 +1783,9 @@ let vendorFilter = 'all';
 let vendorDate   = '';
 let pollTimer    = null;
 let expandedVendorCards = new Set();
+let hisVendorPage = 1;
+let hisPfPage     = 1;
+const HIS_PAGE_SIZE = 20;
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -2539,7 +2542,22 @@ const itColors = String(it['顏色'] || '').split(/[、,，]/).map(c => c.trim()
   });
   
 }
-
+/* 歷史分頁工具 */
+function pagerHtml(id, page, totalPages, totalCount) {
+  if (totalPages <= 1) return '';
+  return `
+    <div id="${id}" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px;flex-wrap:wrap;">
+      <button class="btn small" data-pg="prev" ${page<=1?'disabled':''}>← 上一頁</button>
+      <span style="font-size:12px;color:var(--dk-soft);letter-spacing:1px;">第 ${page} / ${totalPages} 頁　共 ${totalCount} 筆</span>
+      <button class="btn small" data-pg="next" ${page>=totalPages?'disabled':''}>下一頁 →</button>
+    </div>`;
+}
+function bindPager(container, id, current, totalPages, onGo) {
+  const el = container.querySelector('#' + id);
+  if (!el) return;
+  el.querySelector('[data-pg="prev"]')?.addEventListener('click', () => { if (current > 1) onGo(current - 1); });
+  el.querySelector('[data-pg="next"]')?.addEventListener('click', () => { if (current < totalPages) onGo(current + 1); });
+}
 /* ----- 歷史：廠商單（深色條列） ----- */
 function renderHistoryVendor() {
   const status   = $('#hisVStatus').value;
@@ -2592,6 +2610,11 @@ if (!vContainer) {
 
   window._vSelected = (window._vSelected || []).filter(id => orders.find(o => o.id === id));
 
+  // 分頁：每頁 20 筆
+  const vTotalPages = Math.max(1, Math.ceil(orders.length / HIS_PAGE_SIZE));
+  if (hisVendorPage > vTotalPages) hisVendorPage = vTotalPages;
+  const vPageOrders = orders.slice((hisVendorPage - 1) * HIS_PAGE_SIZE, hisVendorPage * HIS_PAGE_SIZE);
+
   let html = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
@@ -2609,7 +2632,7 @@ if (!vContainer) {
       <th>狀態</th><th>備註</th><th></th>
     </tr></thead><tbody>`;
 
-  orders.forEach(o => {
+  vPageOrders.forEach(o => {
     const qty  = Number(o['數量']) || 0;
     const done = doneOf(o.id);
     const isDone = isOrderDone(o);
@@ -2660,7 +2683,9 @@ if (!vContainer) {
   });
 
   html += `</tbody></table></div>`;
+  html += pagerHtml('vPager', hisVendorPage, vTotalPages, orders.length);
   vContainer.innerHTML = html;
+  bindPager(vContainer, 'vPager', hisVendorPage, vTotalPages, p => { hisVendorPage = p; renderHistoryVendor(); });
 
   // 全選邏輯
   const vSelAll   = document.getElementById('vSelAll');
@@ -2769,6 +2794,11 @@ if (!pfContainer) {
 
   window._pfSelected = (window._pfSelected || []).filter(id => items.find(p => p.id === id));
 
+  // 分頁：每頁 20 筆
+  const pfTotalPages = Math.max(1, Math.ceil(items.length / HIS_PAGE_SIZE));
+  if (hisPfPage > pfTotalPages) hisPfPage = pfTotalPages;
+  const pfPageItems = items.slice((hisPfPage - 1) * HIS_PAGE_SIZE, hisPfPage * HIS_PAGE_SIZE);
+
   let html = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
@@ -2785,7 +2815,7 @@ if (!pfContainer) {
       <th>日期</th><th>平台</th><th>明細</th><th>總件數</th><th>狀態</th><th>備註</th><th></th>
     </tr></thead><tbody>`;
 
-  items.forEach(rec => {
+  pfPageItems.forEach(rec => {
     const done = isDone(rec['已完成']);
     const checked = (window._pfSelected || []).includes(rec.id) ? 'checked' : '';
     const detail = rec['明細'] || [];
@@ -2812,7 +2842,9 @@ if (!pfContainer) {
   });
 
   html += `</tbody></table></div>`;
+  html += pagerHtml('pfPager', hisPfPage, pfTotalPages, items.length);
   pfContainer.innerHTML = html;
+  bindPager(pfContainer, 'pfPager', hisPfPage, pfTotalPages, p => { hisPfPage = p; renderHistoryPlatform(); });
 
   // 全選邏輯
   const pfSelAll   = document.getElementById('pfSelAll');
@@ -4738,14 +4770,29 @@ $('#vendorDate').addEventListener('change', e => { vendorDate = e.target.value; 
 $('#vendorClearDate').addEventListener('click', () => { vendorDate = ''; $('#vendorDate').value = ''; renderVendorBoard(); });
 
 // 歷史平台單篩選
-$('#hisDate').addEventListener('change', renderHistoryPlatform);
-$('#hisPlatform').addEventListener('change', renderHistoryPlatform);
-$('#hisPStatus').addEventListener('change', renderHistoryPlatform);
+const rePf = () => { hisPfPage = 1; renderHistoryPlatform(); };
+$('#hisDate').addEventListener('change', rePf);
+$('#hisPlatform').addEventListener('change', rePf);
+$('#hisPStatus').addEventListener('change', rePf);
 $('#hisClearDate').addEventListener('click', () => {
   $('#hisDate').value = '';
   $('#hisPlatform').value = '';
   $('#hisPStatus').value = '';
-  renderHistoryPlatform();
+  rePf();
+});
+
+// 歷史廠商單篩選
+const reVendor = () => { hisVendorPage = 1; renderHistoryVendor(); };
+$('#hisVStatus').addEventListener('change', reVendor);
+$('#hisVDate').addEventListener('change', reVendor);
+$('#hisVVendor').addEventListener('change', reVendor);
+$('#hisVItem').addEventListener('input', reVendor);
+$('#hisVClear').addEventListener('click', () => {
+  $('#hisVStatus').value = '';
+  $('#hisVDate').value = '';
+  $('#hisVVendor').value = '';
+  $('#hisVItem').value = '';
+  reVendor();
 });
 
 // 歷史廠商單篩選
