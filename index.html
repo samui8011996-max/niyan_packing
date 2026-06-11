@@ -1702,7 +1702,7 @@ const LS_CACHE = 'shippingDataCache_v1';
 
 const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
 
-const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','高流','林百貨'];
+const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','高青','林百貨'];
 const DEFAULT_ITEMS   = ['胖胖貓','雙手貓','狗','瘦貓','消波塊','龍','一般熊','棒球熊','蟾蜍','山景名片座'];
 const DEFAULT_STYLES  = ['金運','招福','財','富'];
 const DEFAULT_SIZES   = ['巨','大','中','小'];
@@ -3391,7 +3391,7 @@ function parseTailongWords(words) {
     items
   };
 }
-/* ===== 高流（高青生活）採購單 ===== */
+/* ===== 高青（高青生活）採購單 ===== */
 const GAO_SIZE = { '4.5':'小', '6':'中', '8':'大', '15':'巨' };
 
 function parseGaoWords(words) {
@@ -3439,12 +3439,13 @@ function parseGaoWords(words) {
     items.push({ '品項': item, '款式': style, '大小': size, '顏色': mapColor(color), '數量': qty });
   });
 
-  // 送貨地址判斷廠商：林百貨 → 林百貨，其餘 → 高流
+  // 送貨地址判斷廠商：林百貨 → 林百貨，其餘 → 高青
   const deliveryAddr = (flat.match(/送貨地址[:：]?\s*(.+?)(?=帳單地址|付款條件|供應廠商|$)/s) || [,''])[1];
-  const vendor = /林百貨/.test(deliveryAddr) ? '林百貨' : '高流';
+  const vendor = '高青';
 
   // 門市：取送貨地址第二行關鍵字（林百貨倉庫 / Focus珊瑚廣場等）
-  return { '廠商': vendor, '訂單編號': orderNo, '下單日期': orderDate, '交期': '', '備註': '', items };
+  const store = /林百貨/.test(flat) ? '林百貨' : '高流';
+  return { '廠商': vendor, '訂單編號': orderNo, '下單日期': orderDate, '交期': '', '門市': store, '備註': '', items };
 }
 /* ===== 木酢達人（Blue）出貨單 → 盛發 ===== */
 function parseBlueWords(words) {
@@ -3509,8 +3510,8 @@ const PO_PARSERS = [
     parse:  parseTailongWords
   },
   {
-    vendor: '高流',
-    detect: full => /高青|高流|FPO/.test(full),
+    vendor: '高青',
+    detect: full => /高青|高青|FPO/.test(full),
     parse:  parseGaoWords
   },
   {
@@ -3934,6 +3935,7 @@ let html = `
     <button type="button" class="pf-num-btn" data-it-idx="${idx}" data-it-add="10" ${itFull?'disabled':''}>+10</button>
     <button type="button" class="pf-num-btn" data-it-idx="${idx}" data-it-add="50" ${itFull?'disabled':''}>+50</button>
     <button type="button" class="pf-num-btn clear" data-it-idx="${idx}" data-it-clear="1">清除</button>
+    <button type="button" class="pf-num-btn it-fill" data-it-idx="${idx}" data-it-fill="${itRemain}" ${itFull?'disabled':''} style="background:var(--tape-green);border-color:#8aab74;color:var(--ink);">完成</button>
   </div>
 </div>`;
     }).join('') + `</div>`;
@@ -3993,26 +3995,50 @@ let html = `
   if (progress.length) {
     html += `<div style="border-top:1px dashed var(--line);padding-top:12px;margin-top:8px;">
       <div style="font-size:12px;color:var(--ink-soft);margin-bottom:6px;letter-spacing:2px;">完成紀錄</div>`;
+
+    // 依批次id分組：同一次記入＝同一箱；舊資料無批次id者各自一組
+    const batches = [];
+    const batchMap = {};
     progress.forEach(p => {
-  const metaPieces = [];
-if (p['總箱數'])   metaPieces.push('箱數：'+p['總箱數']);
-if (safeText(p['物流公司'])) metaPieces.push('物流：'+safeText(p['物流公司']));
-if (safeText(p['備註'])) {
-  // 重新排列備註中的品項資訊順序：品項【大小】顏色 款式
-  const raw = safeText(p['備註']);
-  // 備註格式為「品項 款式 大小」，嘗試重排
-  // 直接顯示即可（新紀錄已按正確順序寫入）
-  metaPieces.push(raw);
-}
-      html += `
-        <div class="progress-entry">
-          <span class="who">${escapeHtml(safeText(p['包貨人員'])||'—')}</span>
-          <span class="when">${fmtDate(p['完成日期'])}</span>
-          <span class="qty">+${p['完成數量']}</span>
+      const key = p['批次id'] ? 'b_' + p['批次id'] : 's_' + p.id;
+      if (!batchMap[key]) { batchMap[key] = { rows: [] }; batches.push(batchMap[key]); }
+      batchMap[key].rows.push(p);
+    });
+    batches.sort((a, b) => fmtDate(b.rows[0]['完成日期']).localeCompare(fmtDate(a.rows[0]['完成日期'])));
+
+    batches.forEach((batch, bi) => {
+      const rows     = batch.rows;
+      const r0       = rows[0];
+      const date     = fmtDate(r0['完成日期']);
+      const who      = escapeHtml(safeText(r0['包貨人員']) || '—');
+      const totalQty = rows.reduce((s, p) => s + (Number(p['完成數量']) || 0), 0);
+      const boxes    = Number(r0['總箱數']) || 0;          // 整批共用，取一次（不加總）
+      const logi     = safeText(r0['物流公司']);
+      const logiBox  = logi ? `${escapeHtml(logi)}${boxes ? ` ${boxes} 箱` : ''}`
+                            : (boxes ? `${boxes} 箱` : '');
+      const expanded = false;                               // 預設全部收起       
+
+      const bodyRows = rows.map(p => `
+        <div class="progress-entry" style="margin-bottom:4px;">
+          <span class="qty" style="margin-left:0;">+${p['完成數量']}</span>
+          <span style="flex:1;font-size:12px;color:var(--ink-soft);">${escapeHtml(safeText(p['備註']))}</span>
           <button class="del-btn" data-pid="${p.id}" title="刪除">×</button>
-          ${metaPieces.length?`<div class="meta">${escapeHtml(metaPieces.join('　'))}</div>`:''}
+        </div>`).join('');
+
+      html += `
+        <div class="batch-box" style="border:1px solid var(--line);border-radius:8px;margin-bottom:8px;overflow:hidden;">
+          <div class="batch-head" data-batch-toggle="${bi}"
+               style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--paper-2);cursor:pointer;user-select:none;">
+            <span style="font-family:'Noto Serif TC',serif;font-weight:700;">${who}</span>
+            <span style="font-size:12px;color:var(--ink-soft);">${date}</span>
+            <span style="font-family:'Noto Serif TC',serif;font-weight:700;color:var(--stamp-blue);">+${totalQty}</span>
+            ${logiBox ? `<span style="font-size:12px;color:var(--ink-soft);">${logiBox}</span>` : ''}
+            <span data-batch-arrow="${bi}" style="margin-left:auto;font-size:12px;transition:transform .2s;${expanded ? 'transform:rotate(180deg);' : ''}">▾</span>
+          </div>
+          <div data-batch-body="${bi}" style="padding:8px 10px;${expanded ? '' : 'display:none;'}">${bodyRows}</div>
         </div>`;
     });
+
     html += `</div>`;
   }
 
@@ -4038,6 +4064,14 @@ $('#omBody').querySelectorAll('[data-it-add]').forEach(b => {
     b.addEventListener('click', () => {
       const inp = $('#omBody').querySelector(`.it-qty[data-item-idx="${b.dataset.itIdx}"]`);
       if (inp) inp.value = '';
+    });
+  });
+  $('#omBody').querySelectorAll('[data-it-fill]').forEach(b => {
+    b.addEventListener('click', () => {
+      const inp = $('#omBody').querySelector(`.it-qty[data-item-idx="${b.dataset.itIdx}"]`);
+      if (!inp || inp.disabled) return;
+      const max = Number(inp.getAttribute('max')) || 0;   // max = 剩餘量
+      inp.value = max > 0 ? max : '';
     });
   });
 
@@ -4114,6 +4148,21 @@ const chk = $('#checkAll'), pQty = $('#pQty');
       } catch (e) { toast(e.message, true); }
     });
   });
+
+  $('#omBody').querySelectorAll('[data-batch-toggle]').forEach(head => {
+    head.addEventListener('click', (e) => {
+      if (e.target.closest('.del-btn')) return;
+      const bi    = head.dataset.batchToggle;
+      const body  = $('#omBody').querySelector(`[data-batch-body="${bi}"]`);
+      const arrow = $('#omBody').querySelector(`[data-batch-arrow="${bi}"]`);
+      if (!body) return;
+      const open = body.style.display === 'none';
+      body.style.display = open ? '' : 'none';
+      if (arrow) arrow.style.transform = open ? 'rotate(180deg)' : '';
+    });
+  });
+
+$('#orderClose').addEventListener('click', () => closeOrderModal());
 
 $('#orderClose').addEventListener('click', () => closeOrderModal());
 
@@ -4798,18 +4847,6 @@ $('#hisVClear').addEventListener('click', () => {
   reVendor();
 });
 
-// 歷史廠商單篩選
-$('#hisVStatus').addEventListener('change', renderHistoryVendor);
-$('#hisVDate').addEventListener('change', renderHistoryVendor);
-$('#hisVVendor').addEventListener('change', renderHistoryVendor);
-$('#hisVItem').addEventListener('input', renderHistoryVendor);
-$('#hisVClear').addEventListener('click', () => {
-  $('#hisVStatus').value = '';
-  $('#hisVDate').value = '';
-  $('#hisVVendor').value = '';
-  $('#hisVItem').value = '';
-  renderHistoryVendor();
-});
 
 /* ============ Modal 關閉 ============ */
 document.addEventListener('click', e => {
