@@ -4888,6 +4888,20 @@ $('#cfgTest').addEventListener('click', async () => {
   }
 });
 
+/* 手機：所有數字框一律用純數字鍵盤 */
+(function forceNumericKeypad() {
+  const apply = root => {
+    if (root.nodeType === 1 && root.matches && root.matches('input[type="number"]'))
+      root.setAttribute('inputmode', 'numeric');
+    if (root.querySelectorAll)
+      root.querySelectorAll('input[type="number"]').forEach(i => i.setAttribute('inputmode', 'numeric'));
+  };
+  apply(document);
+  new MutationObserver(muts => {
+    muts.forEach(m => m.addedNodes.forEach(apply));
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+
 /* ============ 啟動 ============ */
 resetVendorForm();
 resetPlatformForm();
