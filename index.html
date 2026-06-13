@@ -1138,6 +1138,7 @@ z-index: 10;
   table.his-table tbody tr:hover {
     background: var(--dk-bg-2);
   }
+  table.his-table tbody tr.his-filler:hover { background: transparent; }
   table.his-table tbody tr.done td { color: var(--dk-soft); }
   table.his-table .status-pill {
     display: inline-block;
@@ -2682,6 +2683,9 @@ if (!vContainer) {
     </tr>`;
   });
 
+  const vFiller = vTotalPages > 1 ? HIS_PAGE_SIZE - vPageOrders.length : 0;
+  if (vFiller > 0) html += `<tr class="his-filler"><td colspan="9" style="height:${vFiller*44}px;border:none;background:transparent;padding:0;"></td></tr>`;
+
   html += `</tbody></table></div>`;
   html += pagerHtml('vPager', hisVendorPage, vTotalPages, orders.length);
   vContainer.innerHTML = html;
@@ -2840,6 +2844,9 @@ if (!pfContainer) {
       </td>
     </tr>`;
   });
+
+  const pfFiller = pfTotalPages > 1 ? HIS_PAGE_SIZE - pfPageItems.length : 0;
+  if (pfFiller > 0) html += `<tr class="his-filler"><td colspan="8" style="height:${pfFiller*44}px;border:none;background:transparent;padding:0;"></td></tr>`;
 
   html += `</tbody></table></div>`;
   html += pagerHtml('pfPager', hisPfPage, pfTotalPages, items.length);
