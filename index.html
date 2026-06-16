@@ -1705,7 +1705,7 @@ const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
 
 const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','高青','林百貨'];
 const DEFAULT_ITEMS   = ['胖胖貓','雙手貓','狗','瘦貓','消波塊','龍','一般熊','棒球熊','蟾蜍','山景名片座'];
-const DEFAULT_STYLES  = ['金運','招福','財','富'];
+const DEFAULT_STYLES  = ['金運','招福','財','富','一對'];
 const DEFAULT_SIZES   = ['巨','大','中','小'];
 const DEFAULT_COLORS  = ['黃','粉','綠','黑','白','灰'];
 
@@ -3582,18 +3582,36 @@ function parseEsliteWords(words) {
     for (let i = 0; i < pls.length; i++) {
       const m = pls[i].text.match(MAIN);
       if (!m) continue;
-      let head = m[3].replace(/氺の尼/g, '').replace(/泥研製所/g, '').replace(/[\/／]\s*$/, '').replace(/\s+/g, '');
       const qty = +m[5];
-      const toks = ((pls[i+1] && pls[i+1].text) || '').split(/[\/／]/).map(t => t.trim()).filter(Boolean);
-      let size = '', color = '';
-      toks.forEach(t => {
-        const sm = t.match(/(\d+(?:\.\d+)?)cm/i);
-        if (sm) { size = GAO_SIZE[sm[1]] || (sm[1] + 'cm'); return; }
-        if (/單入/.test(t)) return;
-        if (!color) color = t;
-      });
-      const { item, style } = resolveItem(head);
-      ord.items.push({ '品項': item, '款式': style, '大小': size, '顏色': mapColor(color), '數量': qty, '附加': '', '已完成': false });
+
+      // 找規格行（含 cm 那行）：通常 i+1，長原碼/長品名換行時往後找
+      let specIdx = -1;
+      for (let j = i + 1; j <= i + 3 && j < pls.length; j++) {
+        if (/\d+(?:\.\d+)?\s*cm/i.test(pls[j].text)) { specIdx = j; break; }
+        if (MAIN.test(pls[j].text)) break;
+      }
+
+      // 品名 = 主行品名 + 規格行之前的換行續行
+      let nameRaw = m[3];
+      const nameEnd = specIdx === -1 ? i + 1 : specIdx;
+      for (let j = i + 1; j < nameEnd; j++) nameRaw += ' ' + pls[j].text;
+      const head = nameRaw.replace(/氺の尼/g, '').replace(/泥研製所/g, '').replace(/[^\u4e00-\u9fa5]/g, '');
+
+      // 規格行：大小 / 款式（單入略過、一對等並入款式）/ 顏色
+      let size = '', color = '', specStyle = '';
+      if (specIdx !== -1) {
+        pls[specIdx].text.split(/[\/／]/).map(t => t.trim()).filter(Boolean).forEach(t => {
+          const sm = t.match(/(\d+(?:\.\d+)?)\s*cm/i);
+          if (sm) { size = GAO_SIZE[sm[1]] || (sm[1] + 'cm'); return; }
+          if (/單入/.test(t)) return;
+          if (STYLES.includes(t)) { specStyle = t; return; }
+          if (!color) color = t;
+        });
+      }
+
+      let { item, style } = resolveItem(head);
+      if (!ITEMS.includes(item) && /^胖胖.*貓$/.test(item)) item = '胖胖貓';   // 招財招福對貓 → 胖胖貓
+      ord.items.push({ '品項': item, '款式': specStyle || style, '大小': size, '顏色': mapColor(color), '數量': qty, '附加': '', '已完成': false });
     }
   });
 
