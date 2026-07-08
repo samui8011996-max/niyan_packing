@@ -1376,6 +1376,7 @@ z-index: 10;
       <button class="tab active" data-tab="board">公 告</button>
       <button class="tab" data-tab="platform">新 平 台 單</button>
       <button class="tab" data-tab="vendor">新 廠 商 單</button>
+      <button class="tab" data-tab="scrap">報 廢</button>
       <button class="tab" data-tab="history">歷 史</button>
     
     </div>
@@ -1538,7 +1539,43 @@ z-index: 10;
       <button class="btn primary" id="btnSubmit">送 出</button>
     </div>
 </section>
+<!-- 報廢 -->
+    <section class="section" id="sec-scrap">
+      <div class="card">
+        <span class="tape t-pink">scrap ✦ 報 廢 登 記</span>
 
+        <div class="form-grid" style="margin-bottom:20px;">
+          <div class="field">
+            <label>日 期</label>
+            <input type="date" id="s_date">
+          </div>
+        </div>
+
+        <div style="font-size:13px;color:var(--ink-soft);letter-spacing:3px;
+                    margin-bottom:10px;padding-bottom:8px;
+                    border-bottom:1.5px dashed var(--line-dark);
+                    display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;
+                       background:var(--accent);"></span>
+          報 廢 明 細（尺 寸 · 數 量）
+        </div>
+        <div id="s_rows_list"></div>
+        <button type="button" class="btn ghost" id="btnAddScrapRow"
+                style="width:100%;margin-top:8px;border-style:dashed;letter-spacing:3px;">
+          ＋ 新 增 尺 寸
+        </button>
+
+        <div class="field full" style="margin-top:20px;">
+          <label>備 註（選填）</label>
+          <textarea id="s_note" placeholder="任何補充說明…"></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn ghost" id="btnScrapReset">清 空</button>
+          <button class="btn primary" id="btnScrapSubmit">送 出</button>
+        </div>
+      </div>
+    </section>
 
     <!-- 歷史 -->
     <section class="section" id="sec-history">
@@ -1601,6 +1638,24 @@ z-index: 10;
         </div>
         <div class="his-table-wrap">
           <table class="his-table" id="hisVendorTable"></table>
+        </div>
+      </div>
+      <!-- 報廢紀錄 -->
+      <div class="his-card">
+        <div class="his-title">
+          <span class="dot"></span>
+          <span>報 廢 紀 錄</span>
+          <span class="count" id="hisScrapCount"></span>
+        </div>
+        <div class="his-filter">
+          <label>日期</label>
+          <input type="date" id="hisSDate">
+          <label>尺寸</label>
+          <select id="hisSSize"><option value="">全部</option></select>
+          <button class="btn small" id="hisSClear">清除</button>
+        </div>
+        <div class="his-table-wrap">
+          <table class="his-table" id="hisScrapTable"></table>
         </div>
       </div>
     </section>
@@ -1778,7 +1833,7 @@ function saveHidden() {
   localStorage.setItem(LS_HIDDEN_PF,     JSON.stringify([...hiddenPf]));
 }
 
-let state = { orders: [], progress: [], platforms: [], settings: {} };
+let state = { orders: [], progress: [], platforms: [], scraps: [], settings: {} };
 let selectedColors = [];
 let vendorFilter = 'all';
 let vendorDate   = '';
@@ -1861,6 +1916,7 @@ function saveShippingCache() {
       orders:    state.orders,
       progress:  state.progress,
       platforms: state.platforms,
+      scraps:    state.scraps,
       settings:  state.settings
     }));
   } catch(_) {}
@@ -1873,6 +1929,7 @@ function hydrateShippingCache() {
     state.orders    = c.orders    || [];
     state.progress  = c.progress  || [];
     state.platforms = c.platforms || [];
+    state.scraps    = c.scraps    || [];
     state.settings  = c.settings  || {};
     renderAll();
     return true;
@@ -1887,6 +1944,7 @@ async function loadAll() {
     state.orders    = main.orders    || [];
     state.progress  = main.progress  || [];
     state.platforms = main.platforms || [];
+    state.scraps    = main.scraps    || [];
     state.settings  = main.settings  || {};
     renderAll();
     saveShippingCache(); 
@@ -2139,6 +2197,7 @@ function renderAll() {
   renderVendorBoard();
   renderHistoryVendor();
   renderHistoryPlatform();
+  renderHistoryScrap();
   renderSelects();
   renderPlatformForm();
   $('#todayDateLabel').textContent = todayStr();
@@ -3205,6 +3264,10 @@ function renderSelects() {
   if (vsec && vsec.contains(document.activeElement)) return;
   fillSelect($('#f_vendor'), mergeList(DEFAULT_VENDORS, s['廠商']));
   document.querySelectorAll('#f_items_list .item-row').forEach(refreshItemRowOptions);
+  const ssec = $('#sec-scrap');
+  if (!(ssec && ssec.contains(document.activeElement))) {
+    document.querySelectorAll('#s_rows_list .scrap-row').forEach(refreshScrapRowOptions);
+  }
 }
 
 async function submitVendor() {
@@ -3283,7 +3346,257 @@ $('#btnAddItem').addEventListener('click', () => {
   });
 });
 
+/* ============ 報廢 ============ */
+function scrapSizeOptions(cur) {
+  return '<option value="">—</option>' +
+    mergeList(DEFAULT_SIZES, (state.settings || {})['大小'])
+      .map(v => `<option ${v === cur ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+}
 
+function refreshScrapRowOptions(div) {
+  const el = div.querySelector('.fi-size');
+  if (!el) return;
+  el.innerHTML = scrapSizeOptions(el.value);
+}
+
+function createScrapRow(data = {}) {
+  const div = document.createElement('div');
+  div.className = 'scrap-row';
+  div.style.cssText = 'display:flex;align-items:flex-end;gap:10px;background:var(--paper-2);' +
+    'border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;';
+  div.innerHTML = `
+    <div class="field" style="flex:1;">
+      <label>大 小</label>
+      <div class="combo">
+        <select class="fi-size">${scrapSizeOptions(data['大小'] || '')}</select>
+        <button type="button" class="add-btn" data-add="大小">+</button>
+      </div>
+    </div>
+    <div class="field" style="flex:1;">
+      <label>數 量</label>
+      <input type="number" class="s-qty" min="0" placeholder="0" value="${data['數量'] || ''}">
+    </div>
+    <button type="button" class="scrap-del-btn btn ghost small" title="移除"
+            style="margin-bottom:2px;padding:6px 12px;">×</button>
+  `;
+  div.querySelector('.scrap-del-btn').addEventListener('click', () => {
+    const list = document.getElementById('s_rows_list');
+    div.remove();
+    if (!list.querySelector('.scrap-row')) list.appendChild(createScrapRow());
+  });
+  div.querySelector('.add-btn[data-add]').addEventListener('click', e => {
+    e.preventDefault();
+    window._addTargetRow = div;
+    openAddModal('大小');
+  });
+  return div;
+}
+
+function resetScrapForm() {
+  const d = $('#s_date'); if (d) d.value = todayStr();
+  const n = $('#s_note'); if (n) n.value = '';
+  const list = $('#s_rows_list');
+  if (list) { list.innerHTML = ''; list.appendChild(createScrapRow()); }
+}
+
+function collectScrapRows() {
+  const rows = [];
+  document.querySelectorAll('#s_rows_list .scrap-row').forEach(div => {
+    const size = div.querySelector('.fi-size')?.value || '';
+    const qty  = Number(div.querySelector('.s-qty')?.value) || 0;
+    if (size && qty > 0) rows.push({ '大小': size, '數量': qty });
+  });
+  return rows;
+}
+
+async function submitScrap() {
+  if (!API_URL) { toast('請先設定 API 網址', true); return; }
+  if (!$('#s_date').value) { toast('請選日期', true); return; }
+  const rows = collectScrapRows();
+  if (!rows.length) { toast('請至少填一個尺寸與數量', true); return; }
+  const btn = $('#btnScrapSubmit');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '送 出 中…';
+  try {
+    await api('addScrap', {
+      '日期': $('#s_date').value,
+      '明細': rows,
+      '備註': $('#s_note').value.trim()
+    });
+    toast('報廢已登記');
+    resetScrapForm();
+    await loadAll();
+    switchTab('history');
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+$('#btnScrapSubmit').addEventListener('click', submitScrap);
+$('#btnScrapReset').addEventListener('click', resetScrapForm);
+$('#btnAddScrapRow').addEventListener('click', () => {
+  $('#s_rows_list').appendChild(createScrapRow());
+});
+
+/* ----- 歷史：報廢（深色條列，可勾選批次刪除） ----- */
+function renderHistoryScrap() {
+  const dateF = $('#hisSDate') ? $('#hisSDate').value : '';
+  const sizeF = $('#hisSSize') ? $('#hisSSize').value : '';
+
+  // 尺寸下拉選項（依現有資料）
+  const sizeSel = $('#hisSSize');
+  if (sizeSel) {
+    const cur = sizeSel.value;
+    const sizes = Array.from(new Set(
+      (state.scraps || []).flatMap(s =>
+        (Array.isArray(s['明細']) ? s['明細'] : []).map(d => safeText(d['大小']))
+      ).filter(Boolean)
+    )).sort();
+    sizeSel.innerHTML = '<option value="">全部</option>' +
+      sizes.map(v => `<option ${v === cur ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  }
+
+  // 展平：每個尺寸一列（同一筆共用 id）
+  let rows = [];
+  (state.scraps || []).forEach(s => {
+    (Array.isArray(s['明細']) ? s['明細'] : []).forEach(d => {
+      rows.push({
+        id: s.id,
+        日期: fmtDate(s['日期']),
+        大小: safeText(d['大小']),
+        數量: Number(d['數量']) || 0,
+        備註: safeText(s['備註']),
+        建立時間: s['建立時間'] || ''
+      });
+    });
+  });
+  if (dateF) rows = rows.filter(r => r.日期 === dateF);
+  if (sizeF) rows = rows.filter(r => r.大小 === sizeF);
+  rows.sort((a, b) => {
+    if (a.日期 !== b.日期) return a.日期 < b.日期 ? 1 : -1;
+    return (b.建立時間 || '').localeCompare(a.建立時間 || '');
+  });
+
+  const totalQty = rows.reduce((s, r) => s + r.數量, 0);
+  const cEl = $('#hisScrapCount');
+  if (cEl) cEl.textContent = `共 ${rows.length} 列 · 報廢 ${totalQty} 件`;
+
+  // 第一次把 table 換成 div 容器
+  let container = document.getElementById('hisScrapContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'hisScrapContainer';
+    const t = document.getElementById('hisScrapTable');
+    if (t) t.replaceWith(container);
+  }
+  if (!container) return;
+
+  if (!rows.length) {
+    container.innerHTML = `<div class="his-empty">無資料</div>`;
+    return;
+  }
+
+  window._sSelected = (window._sSelected || []).filter(id => rows.find(r => r.id === id));
+
+  let html = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="sSelAll" style="width:16px;height:16px;">
+        全選
+      </label>
+      <button class="btn small danger" id="sBulkDel" disabled>刪除選取</button>
+      <span id="sSelCount" style="font-size:12px;color:var(--dk-soft);"></span>
+    </div>
+    <div class="his-table-wrap">
+    <table class="his-table"><thead><tr>
+      <th style="width:32px;"></th>
+      <th>日期</th><th>尺寸</th><th>數量</th><th>備註</th><th></th>
+    </tr></thead><tbody>`;
+  rows.forEach(r => {
+    const checked = (window._sSelected || []).includes(r.id) ? 'checked' : '';
+    html += `<tr data-id="${r.id}">
+      <td><input type="checkbox" class="s-sel-chk" data-id="${r.id}" style="width:15px;height:15px;" ${checked}></td>
+      <td>${r.日期 || '—'}</td>
+      <td>${escapeHtml(r.大小 || '—')}</td>
+      <td class="num full">${r.數量}</td>
+      <td style="max-width:200px;white-space:normal;font-size:12px;color:var(--dk-soft);">${escapeHtml(r.備註)}</td>
+      <td><button class="row-del" data-del-scrap="${r.id}" title="刪除整筆">×</button></td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+
+  const sSelAll   = document.getElementById('sSelAll');
+  const sBulkDel  = document.getElementById('sBulkDel');
+  const sSelCount = document.getElementById('sSelCount');
+
+  function updateSSel() {
+    const all     = container.querySelectorAll('.s-sel-chk');
+    const checked = container.querySelectorAll('.s-sel-chk:checked');
+    window._sSelected = Array.from(new Set(Array.from(checked).map(c => c.dataset.id)));
+    sBulkDel.disabled = window._sSelected.length === 0;
+    sSelCount.textContent = window._sSelected.length ? `已選 ${window._sSelected.length} 筆` : '';
+    sSelAll.checked = checked.length > 0 && checked.length === all.length;
+    sSelAll.indeterminate = checked.length > 0 && checked.length < all.length;
+  }
+
+  sSelAll.addEventListener('change', () => {
+    container.querySelectorAll('.s-sel-chk').forEach(c => c.checked = sSelAll.checked);
+    updateSSel();
+  });
+  // 同一筆（同 id）的多個尺寸列，一起勾／一起取消
+  container.querySelectorAll('.s-sel-chk').forEach(c => {
+    c.addEventListener('change', () => {
+      const id = c.dataset.id;
+      container.querySelectorAll(`.s-sel-chk[data-id="${id}"]`).forEach(x => x.checked = c.checked);
+      updateSSel();
+    });
+  });
+  updateSSel();
+
+  // 批次刪除
+  sBulkDel.addEventListener('click', async () => {
+    const ids = window._sSelected.slice();
+    if (!ids.length) return;
+    if (!confirm(`確定刪除選取的 ${ids.length} 筆報廢紀錄？`)) return;
+    sBulkDel.disabled = true;
+    sBulkDel.textContent = '刪除中…';
+    let ok = 0;
+    for (const id of ids) {
+      try { await api('deleteScrap', { id }); ok++; }
+      catch (e) { console.error(e); }
+    }
+    window._sSelected = [];
+    await loadAll();
+    toast(`已刪除 ${ok} 筆`);
+  });
+
+  // 單筆刪除
+  container.querySelectorAll('[data-del-scrap]').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('刪除這筆報廢紀錄？（含同一筆的所有尺寸）')) return;
+      try {
+        await api('deleteScrap', { id: b.dataset.delScrap });
+        await loadAll();
+        toast('已刪除');
+      } catch (e) { toast(e.message, true); }
+    });
+  });
+}
+
+// 報廢歷史篩選
+const reScrap = () => renderHistoryScrap();
+$('#hisSDate').addEventListener('change', reScrap);
+$('#hisSSize').addEventListener('change', reScrap);
+$('#hisSClear').addEventListener('click', () => {
+  $('#hisSDate').value = '';
+  $('#hisSSize').value = '';
+  reScrap();
+});
 // 建單完成：人員下拉填充 + 勾選才顯示
 (function(){
   const sel = document.getElementById('f_done_staff');
@@ -4930,6 +5243,7 @@ $('#cfgTest').addEventListener('click', async () => {
 /* ============ 啟動 ============ */
 resetVendorForm();
 resetPlatformForm();
+resetScrapForm();
 if (API_URL) {
   hydrateShippingCache();
   loadAll();
