@@ -1293,7 +1293,15 @@ z-index: 10;
 .logi-chip.logi-cvs .logi-name { color: var(--ink); }
 @media (max-width: 600px) {
   .banner h1 { font-size: 26px; letter-spacing: 4px; }
-  .tab { padding: 6px 12px; font-size: 12px; }
+  .tabs { flex-wrap: nowrap; gap: 4px; }
+  .tab {
+    padding: 6px 15px;
+    font-size: 12px;
+    letter-spacing: 0;
+    word-spacing: -2px;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
   .card { padding: 24px 14px 14px; }
   .tape { left: 16px; }
   .tape.t-blue { right: 16px; }
