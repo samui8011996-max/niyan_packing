@@ -1687,6 +1687,14 @@ z-index: 10;
           <div class="status" id="cfgStatus"></div>
           <p style="margin-top: 20px; font-size: 12px;">資料每 20 秒自動同步；新增/修改後立即同步。</p>
           <p style="margin-top: 10px; font-size: 12px;">隱藏的卡片可在歷史紀錄中查看與恢復。</p>
+          <div style="border-top:1px dashed var(--line);margin-top:20px;padding-top:16px;">
+            <p style="margin-bottom: 8px;">匯出資料</p>
+            <div>
+              <button class="btn small" id="cfgExport">匯 出 試 算 表</button>
+            </div>
+            <div class="status" id="exportStatus"></div>
+            <p style="margin-top: 10px; font-size: 12px;">將目前的廠商單、平台單與包貨進度整理成一份 Excel 試算表（多分頁）下載。</p>
+          </div>
         </div>
       </div>
     </section>
@@ -5236,7 +5244,156 @@ $('#cfgTest').addEventListener('click', async () => {
     s.textContent = '✗ ' + e.message; s.className = 'status err';
   }
 });
+/* ============ 匯出試算表 ============ */
+function buildExportRows() {
+  const vendorRows = [];
+  (state.orders || []).forEach(o => {
+    const items = (Array.isArray(o['items']) && o['items'].length) ? o['items'] : null;
+    const base = {
+      '下單日期': fmtDate(o['下單日期']) || '',
+      '交期':     fmtDate(o['交期']) || '',
+      '廠商':     safeText(o['廠商']),
+      '門市':     safeText(o['門市']),
+      '訂單編號': safeText(o['訂單編號'])
+    };
+    if (items) {
+      items.forEach(it => {
+        const qty  = Number(it['數量']) || 0;
+        const done = itemDoneCount(o.id, it);
+        vendorRows.push(Object.assign({}, base, {
+          '品項':   safeText(it['品項']),
+          '款式':   safeText(it['款式']),
+          '顏色':   safeText(it['顏色']),
+          '大小':   safeText(it['大小']),
+          '數量':   qty,
+          '已完成': done,
+          '狀態':   (qty > 0 && done >= qty) ? '完成' : (done > 0 ? '進行中' : '未開始'),
+          '訂單備註': safeText(o['備註'])
+        }));
+      });
+    } else {
+      const qty  = Number(o['數量']) || 0;
+      const done = doneOf(o.id);
+      vendorRows.push(Object.assign({}, base, {
+        '品項':   safeText(o['品項']),
+        '款式':   safeText(o['款式']),
+        '顏色':   safeText(o['顏色']),
+        '大小':   safeText(o['大小']),
+        '數量':   qty,
+        '已完成': done,
+        '狀態':   isOrderDone(o) ? '完成' : (done > 0 ? '進行中' : '未開始'),
+        '訂單備註': safeText(o['備註'])
+      }));
+    }
+  });
 
+  const platformRows = (state.platforms || []).map(p => {
+    const detail = Array.isArray(p['明細']) ? p['明細'] : [];
+    const detailStr = detail
+      .map(d => `${safeText(d['物流'])}:${Number(d['件數']) || 0}`)
+      .join(' / ');
+    return {
+      '日期':     fmtDate(p['日期']) || '',
+      '平台':     safeText(p['平台']),
+      '物流明細': detailStr,
+      '總件數':   Number(p['總件數']) || 0,
+      '已完成':   safeText(p['已完成']),
+      '完成日期': fmtDate(p['完成日期']) || '',
+      '完成物流': safeText(p['完成物流']),
+      '來源平台': safeText(p['來源平台']),
+      '備註':     safeText(p['備註'])
+    };
+  });
+
+  // 先建「訂單id → 訂單」對照表，讓進度看得出是哪張單
+  const orderById = {};
+  (state.orders || []).forEach(o => { orderById[o.id] = o; });
+
+  const progressRows = (state.progress || []).map(p => {
+    const o = orderById[p['訂單id']];
+    return {
+      '完成日期': fmtDate(p['完成日期']) || '',
+      '廠商':     o ? safeText(o['廠商']) : '（訂單已刪除）',
+      '訂單編號': o ? safeText(o['訂單編號']) : '',
+      '下單日期': o ? (fmtDate(o['下單日期']) || '') : '',
+      '品項':     safeText(p['備註']),
+      '完成數量': Number(p['完成數量']) || 0,
+      '總箱數':   safeText(p['總箱數']),
+      '物流公司': safeText(p['物流公司']),
+      '包貨人員': safeText(p['包貨人員']),
+      '建立時間': safeText(p['建立時間'])
+    };
+  });
+
+  return { vendorRows, platformRows, progressRows };
+}
+
+function loadSheetJS() {
+  return new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve(window.XLSX);
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    sc.onload  = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX 載入失敗'));
+    sc.onerror = () => reject(new Error('無法載入試算表元件（請檢查網路）'));
+    document.head.appendChild(sc);
+  });
+}
+
+function downloadCsv(name, rows) {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const esc = v => {
+    const t = String(v == null ? '' : v);
+    return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  };
+  const csv = '\uFEFF' + [headers.join(',')]
+    .concat(rows.map(r => headers.map(h => esc(r[h])).join(',')))
+    .join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+
+async function exportSpreadsheet() {
+  const st  = $('#exportStatus');
+  const btn = $('#cfgExport');
+  const { vendorRows, platformRows, progressRows } = buildExportRows();
+  if (!vendorRows.length && !platformRows.length && !progressRows.length) {
+    st.textContent = '沒有可匯出的資料'; st.className = 'status err';
+    return;
+  }
+  btn.disabled = true;
+  st.textContent = '整理資料中…'; st.className = 'status';
+  const stamp = todayStr();
+  const ph = [{ '（無資料）': '' }];
+  try {
+    const XLSX = await loadSheetJS();
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vendorRows.length ? vendorRows : ph), '廠商單');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(platformRows.length ? platformRows : ph), '平台單');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(progressRows.length ? progressRows : ph), '包貨進度');
+    XLSX.writeFile(wb, `出貨紀錄_${stamp}.xlsx`);
+    st.textContent = `✓ 已匯出（廠商單 ${vendorRows.length}、平台單 ${platformRows.length}、進度 ${progressRows.length} 筆）`;
+    st.className = 'status ok';
+    toast('已匯出試算表');
+  } catch (e) {
+    st.textContent = '試算表元件無法載入，改用 CSV 下載…'; st.className = 'status';
+    downloadCsv(`出貨_廠商單_${stamp}`,   vendorRows);
+    downloadCsv(`出貨_平台單_${stamp}`,   platformRows);
+    downloadCsv(`出貨_包貨進度_${stamp}`, progressRows);
+    st.textContent = '✓ 已改用 CSV 匯出（分三個檔案）'; st.className = 'status ok';
+    toast('已匯出 CSV');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$('#cfgExport').addEventListener('click', exportSpreadsheet);
 /* 手機：所有數字框一律用純數字鍵盤 */
 (function forceNumericKeypad() {
   const apply = root => {
