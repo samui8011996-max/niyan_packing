@@ -1853,6 +1853,12 @@ function saveHidden() {
 }
 
 let state = { orders: [], progress: [], platforms: [], scraps: [], settings: {} };
+let isUploading = false;
+window.addEventListener('beforeunload', (e) => {
+  if (!isUploading) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
 let selectedColors = [];
 let vendorFilter = 'all';
 let vendorDate   = '';
@@ -2313,22 +2319,32 @@ function renderPlatformBoard() {
       const note = safeText(rec['備註']);
       // 未出貨扣除：來源平台＝本平台、今天建立、尚未完成
       const ded = unsentDeductFor(name, today);
+      const totalQty = Number(rec['總件數']) || 0;
+      const netQty = Math.max(0, totalQty - ded.total);
       let dedHtml = '';
       if (ded.total > 0) {
         const dedLines = Object.keys(ded.byLogi).map(l =>
           `<div class="pf-line" style="color:var(--stamp-red);"><span>未出貨 ${escapeHtml(l)}</span><b>−${ded.byLogi[l]}</b></div>`
         ).join('');
-        const net = (Number(rec['總件數'])||0) - ded.total;
         dedHtml = `<div style="border-top:1px dotted var(--line);margin-top:2px;padding-top:2px;">
             ${dedLines}
-            <div class="pf-line" style="font-weight:700;"><span>今日實出</span><b style="color:var(--stamp-blue);">${net}</b></div>
+            <div class="pf-line" style="font-weight:700;"><span>今日實出(扣掉未出貨)</span><b style="color:var(--stamp-blue);">${netQty}</b></div>
           </div>`;
       }
+      const summaryHtml = ded.total > 0
+        ? `<div class="pf-total" style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;text-align:center;">
+            <span class="label">實出</span><span style="color:var(--stamp-blue);font-weight:700;">${netQty}</span>
+            <span>/</span>
+            <span class="label">總訂單</span><span>${totalQty}</span>
+          </div>`
+        : `<div class="pf-total" style="display:flex;justify-content:center;align-items:center;gap:8px;text-align:center;">
+            <span class="label">總</span><span>${totalQty}</span>
+          </div>`;
       return `
       <div class="pf-card ${isDone(rec['已完成']) ? 'done' : ''}" data-id="${rec.id}">
           
           <div class="pf-platform"><span>${name}</span></div>
-          <div class="pf-total"><span class="label">總</span>${rec['總件數']||0}</div>
+          ${summaryHtml}
           <div class="pf-details">${detailHtml}${dedHtml}</div>
          ${note ? `<div style="font-family:'Noto Sans TC','Noto Serif TC',serif;font-size:12px;color:var(--stamp-red);border-top:1px dotted var(--line);padding-top:6px;margin-bottom:6px;">📝 ${escapeHtml(note)}</div>` : ''}
         <div class="pf-actions">
@@ -3326,19 +3342,25 @@ const res = await api('addOrder', {
     const allDone = $('#f_all_done').checked;
 if (res && res.id && allDone) {
       const today = todayStr();
-      for (const it of items) {
-        if (!it['品項']) continue;
-        const q = Number(it['數量']) || 0;
-        if (q <= 0) continue;
-        await api('addProgress', {
-          '訂單id':   res.id,
-          '完成日期': today,
-          '完成數量': q,
-          '總箱數':   '',
-          '物流公司': '黑貓',
-          '包貨人員': doneStaff,
-          '備註': `${safeText(it['品項'])}【${safeText(it['大小'])}】 ${safeText(it['顏色'])} ${safeText(it['款式'])}`.trim()
-        });
+      const doneEntries = items.filter(it => it['品項'] && (Number(it['數量'])||0) > 0);
+      if (doneEntries.length) {
+        isUploading = true;
+        try {
+          await api('addProgressBatch', {
+            '訂單id':   res.id,
+            '完成日期': today,
+            '總箱數':   '',
+            '物流公司': '黑貓',
+            '批次id':   Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+            '包貨人員': doneStaff,
+            'items': doneEntries.map(it => ({
+              '完成數量': Number(it['數量']) || 0,
+              '備註': `${safeText(it['品項'])}【${safeText(it['大小'])}】 ${safeText(it['顏色'])} ${safeText(it['款式'])}`.trim()
+            }))
+          });
+        } finally {
+          isUploading = false;
+        }
       }
     }
 
@@ -4551,25 +4573,26 @@ async function addOrderProgress() {
 
     const saveBtn = $('#pSave');
     const allBtns = $('#omBody').querySelectorAll('button, input, select');
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '上傳中…'; saveBtn.style.opacity = '0.5'; saveBtn.style.cursor = 'not-allowed'; }
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = `上傳中…（${entries.length} 項）`; saveBtn.style.opacity = '0.5'; saveBtn.style.cursor = 'not-allowed'; }
     allBtns.forEach(el => { el.disabled = true; });
 
+    isUploading = true;
     try {
       const logi  = $('#pLogi').value || '黑貓';
       const boxes = $('#pBoxes').value || '';
       const date  = $('#pDate').value || todayStr();
-      for (const e of entries) {
-        await api('addProgress', {
-          '訂單id':   o.id,
-          '完成日期': date,
+      await api('addProgressBatch', {
+        '訂單id':   o.id,
+        '完成日期': date,
+        '總箱數':   boxes,
+        '物流公司': logi,
+        '批次id':   batchId,
+        '包貨人員': staff,
+        'items': entries.map(e => ({
           '完成數量': e.n,
-          '總箱數':   boxes,
-          '物流公司': logi,
-          '批次id':   batchId,
-          '包貨人員': staff,
           '備註': `${safeText(e.it['品項'])}【${safeText(e.it['大小'])}】 ${safeText(e.it['顏色'])} ${safeText(e.it['款式'])}`.trim()
-        });
-      }
+        }))
+      });
       await loadAll();
       const updated = state.orders.find(x => x.id === o.id);
       if (updated) { currentOrder = updated; renderOrderModal(); }
@@ -4579,6 +4602,8 @@ async function addOrderProgress() {
       $('#omBody').querySelectorAll('button, input, select').forEach(el => { el.disabled = false; });
       const sb = $('#pSave');
       if (sb) { sb.textContent = '記 入'; sb.style.opacity = ''; sb.style.cursor = ''; }
+    } finally {
+      isUploading = false;
     }
     return;
   }
@@ -4594,6 +4619,7 @@ async function addOrderProgress() {
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '上傳中…'; saveBtn.style.opacity = '0.5'; saveBtn.style.cursor = 'not-allowed'; }
   allBtns.forEach(el => { el.disabled = true; });
 
+  isUploading = true;
   try {
     const logi = $('#pLogi').value || '黑貓';
     await api('addProgress', {
@@ -4612,6 +4638,8 @@ async function addOrderProgress() {
     toast(e.message, true);
     allBtns.forEach(el => { el.disabled = false; });
     if (saveBtn) { saveBtn.textContent = '記 入'; saveBtn.style.opacity = ''; saveBtn.style.cursor = ''; }
+  } finally {
+    isUploading = false;
   }
 }
 function openOrderEdit(o) {
