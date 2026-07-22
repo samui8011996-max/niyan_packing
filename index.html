@@ -1923,15 +1923,32 @@ function isDone(v) {
 /* ============ API ============ */
 async function api(action, payload = {}) {
   if (!API_URL) throw new Error('尚未設定 API 網址');
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action, payload }),
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-  });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || '未知錯誤');
-  return data.data;
+  const maxRetries = 2;
+  for (let attempt = 0; ; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action, payload }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        signal: controller.signal
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (!data.ok) {
+        const err = new Error(data.error || '未知錯誤');
+        err.noRetry = true;
+        throw err;
+      }
+      return data.data;
+    } catch (e) {
+      if (e.noRetry || attempt >= maxRetries) throw e;
+      await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 let loadSeq = 0;
