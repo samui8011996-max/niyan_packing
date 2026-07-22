@@ -1835,7 +1835,7 @@ function mergeList(defaults, custom) {
   return [...defaults, ...(custom || []).filter(v => !defaults.includes(v))];
 }
 
-let API_URL  = localStorage.getItem(LS_URL) || '';
+let API_URL  = localStorage.getItem(LS_URL) || 'https://script.google.com/macros/s/AKfycbzSWZOSlhEO62N4sRmM8QWvRKQQRnyNaT-548oxI5KDLOFo5JZDkGu-Q6R2VluxauQ1/exec';
 let colorMap = Object.assign({}, DEFAULT_COLOR_MAP);
 try {
   const stored = JSON.parse(localStorage.getItem(LS_COLORS) || '{}');
