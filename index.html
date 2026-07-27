@@ -501,7 +501,12 @@ html, body {
 
 .pf-form-card[data-platform="補寄"],
 .pf-form-card[data-platform="補寄"].has-data {
-  border-left-color: var(--pf-info, #a7b8ab);
+  border-left-color: #d98a3e;
+}
+
+.pf-form-card[data-platform="離島•郵局"],
+.pf-form-card[data-platform="離島•郵局"].has-data {
+  border-left-color: #8aab74;
 }
 
   .pf-form-head {
@@ -1291,6 +1296,8 @@ z-index: 10;
 .logi-chip.logi-blackcat .logi-num { color: #fff; }
 .logi-chip.logi-cvs { background: var(--tape-blue); border-color: #8fb3c4; }
 .logi-chip.logi-cvs .logi-name { color: var(--ink); }
+.logi-chip.logi-post { background: var(--tape-green); border-color: #9db988; }
+.logi-chip.logi-post .logi-name { color: var(--ink); }
 @media (max-width: 600px) {
   .scrap-row { flex-wrap: wrap !important; }
   .scrap-row .field { flex: 1 1 100% !important; }
@@ -1608,7 +1615,7 @@ z-index: 10;
             <option value="">全部</option>
             <option>Line禮物</option><option>蝦皮</option><option>Pinkoi</option>
             <option>瑪黑</option><option>官網</option><option>博客來</option><option>MO+</option><option>酷澎</option>
-            <option>補寄</option><option>未出貨</option>
+            <option>補寄</option><option>離島•郵局</option><option>未出貨</option>
           </select>
           <label>狀態</label>
           <select id="hisPStatus">
@@ -1802,10 +1809,11 @@ const DEFAULT_PLATFORM_LOGISTICS = {
   'MO+':      ['黑貓','超商'],
   '酷澎':     ['黑貓','超商','指定物流'],
   '補寄':     ['黑貓','超商'],
+  '離島•郵局': ['郵局'],
   '未出貨':   ['黑貓','超商']
 };
 
-const DEFAULT_PLATFORM_ORDER = ['Line禮物','蝦皮','Pinkoi','瑪黑','官網','博客來','MO+','酷澎','補寄','未出貨'];
+const DEFAULT_PLATFORM_ORDER = ['Line禮物','蝦皮','Pinkoi','瑪黑','官網','博客來','MO+','酷澎','補寄','離島•郵局','未出貨'];
 
 // 未出貨在「今日平台」一般卡片清單中特殊處理，不走一般迴圈
 const SPECIAL_PLATFORMS = ['未出貨'];
@@ -2010,7 +2018,7 @@ function doneOf(orderId) {
 /* 計算今日物流總數 */
 function computeTodayLogi() {
   const today = todayStr();
-  let blackcat = 0, cvs = 0;
+  let blackcat = 0, cvs = 0, post = 0;
   const others = {};
   // 今日所有平台（未出貨不在此累計，改用扣除）
   state.platforms.filter(p => fmtDate(p['日期']) === today && p['平台'] !== '未出貨').forEach(p => {
@@ -2018,9 +2026,10 @@ function computeTodayLogi() {
       const logi = String(d.物流 || '').trim();
       const qty  = Number(d.件數) || 0;
       if (!qty) return;
-      if (logi === '黑貓')             blackcat += qty;  // 含補寄黑貓；「蝦皮黑貓」名稱不等於「黑貓」故不計入
-      else if (logi.includes('超商'))  cvs += qty;       // 含蝦皮超商
-      else (others[logi] = (others[logi] || 0) + qty);   // 蝦皮一般、蝦皮黑貓、蝦皮隔日… 各自獨立
+      if (logi === '黑貓' || logi === '蝦皮黑貓') blackcat += qty; // 含補寄黑貓、蝦皮黑貓
+      else if (logi === '郵局')                  post += qty;
+      else if (logi.includes('超商'))             cvs += qty;      // 含蝦皮超商
+      else (others[logi] = (others[logi] || 0) + qty);             // 蝦皮一般、蝦皮隔日… 各自獨立
     });
   });
   // 未出貨【扣除】：建立日=今天 → 一律從今日扣除（不論完成與否，那幾件當天沒出）
@@ -2031,13 +2040,14 @@ function computeTodayLogi() {
     (Array.isArray(p['明細']) ? p['明細'] : []).forEach(d => {
       const logi = String(d.物流 || '').trim();
       const qty  = Number(d.件數) || 0;
-      if (logi === '黑貓')             blackcat -= qty;
-      else if (logi.includes('超商'))  cvs -= qty;
-      else                             others[logi] = (others[logi] || 0) - qty;
+      if (logi === '黑貓' || logi === '蝦皮黑貓') blackcat -= qty;
+      else if (logi === '郵局')                  post -= qty;
+      else if (logi.includes('超商'))             cvs -= qty;
+      else                                        others[logi] = (others[logi] || 0) - qty;
     });
   });
 
-  // 未出貨【加回】：完成日=今天 → 加到「完成時選擇的物流」（黑貓 / 超商）
+  // 未出貨【加回】：完成日=今天 → 加到「完成時選擇的物流」（黑貓 / 超商 / 郵局）
   state.platforms.filter(p =>
     p['平台'] === '未出貨' &&
     isDone(p['已完成']) &&
@@ -2046,12 +2056,13 @@ function computeTodayLogi() {
     const qty  = Number(p['總件數']) || 0;
     if (!qty) return;
     const logi = String(p['完成物流'] || '黑貓').trim();
-    if (logi === '黑貓')            blackcat += qty;
-    else if (logi.includes('超商')) cvs += qty;
-    else                            others[logi] = (others[logi] || 0) + qty;
+    if (logi === '黑貓' || logi === '蝦皮黑貓') blackcat += qty;
+    else if (logi === '郵局')                  post += qty;
+    else if (logi.includes('超商'))             cvs += qty;
+    else                                        others[logi] = (others[logi] || 0) + qty;
   });
 
-  return { blackcat, cvs, others };
+  return { blackcat, cvs, post, others };
 }
 /* 某平台今天「未出貨且未完成」的扣除量（給今日平台卡片顯示用） */
 function unsentDeductFor(platformName, today) {
@@ -2082,11 +2093,12 @@ function unsentDeductFor(platformName, today) {
 function renderTodayLogiSummary() {
   const el = $('#todayLogiSummary');
   if (!el) return;
-  const { blackcat, cvs, others } = computeTodayLogi();
+  const { blackcat, cvs, post, others } = computeTodayLogi();
   const otherKeys = Object.keys(others).filter(k => others[k] > 0).sort();
   let chips = `
     <div class="logi-chip logi-blackcat"><span class="logi-name">黑貓</span><span class="logi-num">${blackcat}</span></div>
     <div class="logi-chip logi-cvs"><span class="logi-name">超商</span><span class="logi-num">${cvs}</span></div>
+    <div class="logi-chip logi-post"><span class="logi-name">郵局</span><span class="logi-num">${post}</span></div>
   `;
   otherKeys.forEach(k => {
     chips += `<div class="logi-chip"><span class="logi-name">${escapeHtml(k)}</span><span class="logi-num">${others[k]}</span></div>`;
