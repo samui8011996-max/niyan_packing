@@ -509,6 +509,13 @@ html, body {
   border-left-color: #8aab74;
 }
 
+.pf-card[data-platform="補寄"] {
+  border-left: 4px solid #d98a3e;
+}
+.pf-card[data-platform="離島•郵局"] {
+  border-left: 4px solid #8aab74;
+}
+
   .pf-form-head {
     display: flex; align-items: center; gap: 10px;
     margin-bottom: 8px;
@@ -2095,11 +2102,10 @@ function renderTodayLogiSummary() {
   if (!el) return;
   const { blackcat, cvs, post, others } = computeTodayLogi();
   const otherKeys = Object.keys(others).filter(k => others[k] > 0).sort();
-  let chips = `
-    <div class="logi-chip logi-blackcat"><span class="logi-name">黑貓</span><span class="logi-num">${blackcat}</span></div>
-    <div class="logi-chip logi-cvs"><span class="logi-name">超商</span><span class="logi-num">${cvs}</span></div>
-    <div class="logi-chip logi-post"><span class="logi-name">郵局</span><span class="logi-num">${post}</span></div>
-  `;
+  let chips = '';
+  if (blackcat !== 0) chips += `<div class="logi-chip logi-blackcat"><span class="logi-name">黑貓</span><span class="logi-num">${blackcat}</span></div>`;
+  if (cvs !== 0)      chips += `<div class="logi-chip logi-cvs"><span class="logi-name">超商</span><span class="logi-num">${cvs}</span></div>`;
+  if (post !== 0)     chips += `<div class="logi-chip logi-post"><span class="logi-name">郵局</span><span class="logi-num">${post}</span></div>`;
   otherKeys.forEach(k => {
     chips += `<div class="logi-chip"><span class="logi-name">${escapeHtml(k)}</span><span class="logi-num">${others[k]}</span></div>`;
   });
@@ -2323,7 +2329,7 @@ function renderPlatformBoard() {
           ).join('')
         : '';
       return `
-        <div class="pf-card" style="border-style:${dedE.total>0?'solid':'dashed'};opacity:${dedE.total>0?'1':'0.55'};" data-empty-platform="${escapeAttr(name)}">
+        <div class="pf-card" style="border-style:${dedE.total>0?'solid':'dashed'};opacity:${dedE.total>0?'1':'0.55'};" data-empty-platform="${escapeAttr(name)}" data-platform="${escapeAttr(name)}">
           <div class="pf-platform">
             <span>${name}</span>
             <span class="pf-tag" style="background: var(--line-dark);">${dedE.total>0?'扣':'無'}</span>
@@ -2370,7 +2376,7 @@ function renderPlatformBoard() {
             <span class="label">總</span><span>${totalQty}</span>
           </div>`;
       return `
-      <div class="pf-card ${isDone(rec['已完成']) ? 'done' : ''}" data-id="${rec.id}">
+      <div class="pf-card ${isDone(rec['已完成']) ? 'done' : ''}" data-id="${rec.id}" data-platform="${escapeAttr(name)}">
           
           <div class="pf-platform"><span>${name}</span></div>
           ${summaryHtml}
