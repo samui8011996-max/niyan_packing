@@ -5201,7 +5201,7 @@ function openPlatformEdit(rec, platformName, overrideDate) {
       });
     }
     const noteVal = $('#ef_note').value;
-    if (total <= 0 && !noteVal.trim()) {
+    if (total <= 0 && !noteVal.trim() && platform !== '離島•郵局') {
       toast('請至少填入件數或備註', true);
       return;
     }
