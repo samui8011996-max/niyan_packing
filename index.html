@@ -1793,7 +1793,7 @@ const LS_CACHE = 'shippingDataCache_v1';
 
 const STAFFS = ['淑莉','美菲','妍儒','佳宜','維妮','其他'];
 
-const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','高青','林百貨'];
+const DEFAULT_VENDORS = ['盛發','誠品','博客來','星期六','臺隆','高青','林百貨','樹德'];
 const DEFAULT_ITEMS   = ['胖胖貓','雙手貓','狗','瘦貓','消波塊','龍','一般熊','棒球熊','蟾蜍','山景名片座'];
 const DEFAULT_STYLES  = ['金運','招福','財','富','一對'];
 const DEFAULT_SIZES   = ['巨','大','中','小'];
@@ -3903,6 +3903,66 @@ function parseBlueWords(words) {
     items
   };
 }
+/* ===== 樹德企業 寄售採購單 ===== */
+function parseShudeWords(words) {
+  const ws = words.slice().sort((a,b) => (a.pg - b.pg) || (a.y - b.y) || (a.x - b.x));
+  const lines = [];
+  ws.forEach(w => {
+    const last = lines[lines.length - 1];
+    if (last && last.pg === w.pg && Math.abs(w.y - last.y) <= 3) last.ws.push(w);
+    else lines.push({ pg: w.pg, y: w.y, ws: [w] });
+  });
+  lines.forEach(ln => { ln.ws.sort((a,b) => a.x - b.x); ln.text = ln.ws.map(w => w.t).join(' '); });
+
+  const flat = lines.map(l => l.text.replace(/\s+/g, '')).join('\n');
+  const orderDate = pdfDateToIso((flat.match(/採購單日期[:：\-]?\s*(\d{4}\/\d{1,2}\/\d{1,2})/) || [,''])[1]);
+  const orderNo   = (flat.match(/(?:採購單號|暫入單號)[:：]\s*([A-Za-z0-9\-]+)/) || [,''])[1];
+  const store     = /南投/.test(flat) ? '南投' : '';
+
+  const STYLES     = mergeList(DEFAULT_STYLES, (state.settings || {})['款式']);
+  const BASECOLORS = mergeList(DEFAULT_COLORS, (state.settings || {})['顏色']);
+  const mapColor   = c => { c = String(c || '').replace(/\s+/g, ''); return BASECOLORS.includes(c.slice(-1)) ? c.slice(-1) : c; };
+
+  // 品號 品名 售價 進貨數量 展品數量 [驗收數量]：出貨依「進貨數量」為準
+  const ROW = /^([A-Za-z]{2,10}\d{3,})\s+(.+?)\s+(\d+)\s+(\d+)\s+(\d+)(?:\s+(\d+))?\s*$/;
+  const items = [];
+  const seenCodes = new Set();   // 表格在同一份 PDF 內會重複出現一次（文字版+畫面版），依品號去重
+  lines.forEach(ln => {
+    const m = ln.text.match(ROW);
+    if (!m) return;
+    const code = m[1];
+    if (seenCodes.has(code)) return;
+    seenCodes.add(code);
+    const name = m[2].replace(/\s+/g, '').replace(/【?泥研製所】?/g, '');
+    if (!name) return;
+    const qtyIn = +m[4];   // 進貨數量
+
+    let item = name, style = '', size = '', color = '', add = '';
+    const box = name.match(/^(.+?)[（(]([^）)]+)[）)](.+)$/);
+    if (box) {
+      item = box[1]; size = box[2]; color = mapColor(box[3]);
+      for (const s of STYLES) { if (item.indexOf(s) >= 0) { style = s; item = item.replace(s, ''); break; } }
+    } else {
+      const oil = name.match(/^(.+?)(\d+(?:\.\d+)?\s*ml)[-－](.+)$/i);   // 精油品項：無括號規格，ml數與口味記在附加
+      if (oil) {
+        item = '精油';
+        add = `+精油 ${oil[2].replace(/\s+/g, '')}（${oil[3]}）`;
+      }
+    }
+
+    items.push({ '品項': item, '款式': style, '大小': size, '顏色': color, '數量': qtyIn, '附加': add });
+  });
+
+  return {
+    '廠商':     '樹德',
+    '訂單編號': orderNo,
+    '下單日期': orderDate,
+    '交期':     '',
+    '門市':     store,
+    '備註':     '',
+    items
+  };
+}
 /* 各廠商採購單解析器登錄表 */
 /* 各廠商採購單解析器登錄表 */
 const PO_PARSERS = [
@@ -3925,6 +3985,11 @@ const PO_PARSERS = [
     vendor: '盛發',
     detect: full => /木酢達人|廠商-Blue|木\s*酢\s*達\s*人/.test(full),
     parse:  parseBlueWords
+  },
+  {
+    vendor: '樹德',
+    detect: full => /樹德企業股份有限公司|供應廠商代號[:：]\s*40800035/.test(full),
+    parse:  parseShudeWords
   },
 ];
 /* ===== 誠品生活 EXPO 採購單（一檔多單）===== */
