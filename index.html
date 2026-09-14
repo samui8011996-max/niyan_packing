@@ -1852,7 +1852,7 @@ function mergeList(defaults, custom) {
   return [...defaults, ...(custom || []).filter(v => !defaults.includes(v))];
 }
 
-let API_URL  = localStorage.getItem(LS_URL) || 'https://script.google.com/macros/s/AKfycbzSWZOSlhEO62N4sRmM8QWvRKQQRnyNaT-548oxI5KDLOFo5JZDkGu-Q6R2VluxauQ1/exec';
+let API_URL  = localStorage.getItem(LS_URL) || 'https://script.google.com/macros/s/AKfycbzvvvMPw8iR1rlUI5EZ1LA0fMU1CHg3ZCOTsYBS_DjPOxgSckSpY8iC2Ts_MI_q7NTu/exec';
 let colorMap = Object.assign({}, DEFAULT_COLOR_MAP);
 try {
   const stored = JSON.parse(localStorage.getItem(LS_COLORS) || '{}');
